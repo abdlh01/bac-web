@@ -1,18 +1,21 @@
 
 import { useState, useEffect, useRef } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useTelegramUser } from "@/hooks/useTelegramUser";
 
 const Counter = () => {
   const [time, setTime] = useState(0);
   const [isRunning, setIsRunning] = useState(false);
   const [points, setPoints] = useState(0);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const { user } = useTelegramUser();
 
   useEffect(() => {
     if (isRunning) {
       intervalRef.current = setInterval(() => {
         setTime(prevTime => {
           const newTime = prevTime + 1;
-          setPoints(newTime); // كل ثانية = نقطة
+          setPoints(newTime);
           return newTime;
         });
       }, 1000);
@@ -33,6 +36,7 @@ const Counter = () => {
     const handleVisibilityChange = () => {
       if (document.hidden) {
         setIsRunning(false);
+        saveCounterSession();
       }
     };
 
@@ -41,6 +45,34 @@ const Counter = () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, []);
+
+  const saveCounterSession = async () => {
+    if (time > 0 && user) {
+      try {
+        // حفظ جلسة العداد
+        await supabase
+          .from('counter_sessions')
+          .insert({
+            user_id: user.id.toString(),
+            duration: time,
+            points_earned: points,
+            is_active: false,
+            end_time: new Date().toISOString(),
+          });
+
+        // تحديث نقاط المستخدم
+        await supabase
+          .from('users')
+          .update({
+            counter_points: points,
+            study_hours: time / 3600,
+          })
+          .eq('telegram_id', user.id);
+      } catch (error) {
+        console.error('Error saving counter session:', error);
+      }
+    }
+  };
 
   const formatTime = (seconds: number) => {
     const hours = Math.floor(seconds / 3600);
@@ -54,25 +86,25 @@ const Counter = () => {
   };
 
   return (
-    <div className="min-h-screen gradient-bg-reverse flex flex-col items-center justify-center p-6 overflow-hidden">
-      <div className="text-center">
-        <p className="text-white/80 text-sm mb-8">كل ثانية تساوي نقطة واحدة</p>
+    <div className="min-h-screen gradient-bg-reverse flex flex-col items-center justify-start pt-16 p-6 overflow-hidden">
+      <div className="text-center w-full max-w-sm">
+        <p className="text-white/80 text-sm mb-16">كل ثانية تساوي نقطة واحدة</p>
         
-        <div className="relative mb-8">
+        <div className="relative mb-16 flex justify-center">
           <div 
             className={`w-32 h-32 rounded-full glass flex items-center justify-center ${
               isRunning ? 'pulse-ring' : ''
             }`}
           >
             <div className="text-center">
-              <div className="text-xl font-bold text-white mb-1">
+              <div className="text-lg font-bold text-white mb-1">
                 {formatTime(time)}
               </div>
             </div>
           </div>
         </div>
 
-        <div className="glass rounded-2xl p-6 mb-8">
+        <div className="glass rounded-2xl p-6 mb-16">
           <div className="text-2xl font-bold text-white mb-1">{points}</div>
           <div className="text-white/80 text-sm">النقاط المجمعة</div>
         </div>

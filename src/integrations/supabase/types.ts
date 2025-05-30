@@ -9,13 +9,279 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      counter_sessions: {
+        Row: {
+          duration: number | null
+          end_time: string | null
+          id: string
+          is_active: boolean | null
+          points_earned: number | null
+          start_time: string | null
+          user_id: string | null
+        }
+        Insert: {
+          duration?: number | null
+          end_time?: string | null
+          id?: string
+          is_active?: boolean | null
+          points_earned?: number | null
+          start_time?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          duration?: number | null
+          end_time?: string | null
+          id?: string
+          is_active?: boolean | null
+          points_earned?: number | null
+          start_time?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "counter_sessions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      leaderboard: {
+        Row: {
+          id: string
+          rank: number | null
+          total_points: number | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          id?: string
+          rank?: number | null
+          total_points?: number | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          id?: string
+          rank?: number | null
+          total_points?: number | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leaderboard_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quiz_questions: {
+        Row: {
+          correct_answer: number
+          created_at: string | null
+          difficulty_level: number | null
+          id: string
+          is_active: boolean | null
+          options: string[]
+          question: string
+          subject: string
+        }
+        Insert: {
+          correct_answer: number
+          created_at?: string | null
+          difficulty_level?: number | null
+          id?: string
+          is_active?: boolean | null
+          options: string[]
+          question: string
+          subject: string
+        }
+        Update: {
+          correct_answer?: number
+          created_at?: string | null
+          difficulty_level?: number | null
+          id?: string
+          is_active?: boolean | null
+          options?: string[]
+          question?: string
+          subject?: string
+        }
+        Relationships: []
+      }
+      quiz_results: {
+        Row: {
+          answers: Json | null
+          completed_at: string | null
+          id: string
+          points_earned: number
+          score: number
+          subject: string
+          time_taken: number | null
+          total_questions: number
+          user_id: string | null
+        }
+        Insert: {
+          answers?: Json | null
+          completed_at?: string | null
+          id?: string
+          points_earned: number
+          score: number
+          subject: string
+          time_taken?: number | null
+          total_questions: number
+          user_id?: string | null
+        }
+        Update: {
+          answers?: Json | null
+          completed_at?: string | null
+          id?: string
+          points_earned?: number
+          score?: number
+          subject?: string
+          time_taken?: number | null
+          total_questions?: number
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quiz_results_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tasks: {
+        Row: {
+          channel_url: string
+          created_at: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          points: number | null
+          title: string
+        }
+        Insert: {
+          channel_url: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          points?: number | null
+          title: string
+        }
+        Update: {
+          channel_url?: string
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          points?: number | null
+          title?: string
+        }
+        Relationships: []
+      }
+      user_tasks: {
+        Row: {
+          completed_at: string | null
+          id: string
+          task_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          completed_at?: string | null
+          id?: string
+          task_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          completed_at?: string | null
+          id?: string
+          task_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_tasks_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_tasks_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      users: {
+        Row: {
+          avatar_url: string | null
+          counter_points: number | null
+          created_at: string | null
+          first_name: string | null
+          id: string
+          last_active: string | null
+          last_name: string | null
+          quiz_points: number | null
+          study_hours: number | null
+          task_points: number | null
+          telegram_id: number
+          total_points: number | null
+          updated_at: string | null
+          username: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          counter_points?: number | null
+          created_at?: string | null
+          first_name?: string | null
+          id?: string
+          last_active?: string | null
+          last_name?: string | null
+          quiz_points?: number | null
+          study_hours?: number | null
+          task_points?: number | null
+          telegram_id: number
+          total_points?: number | null
+          updated_at?: string | null
+          username?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          counter_points?: number | null
+          created_at?: string | null
+          first_name?: string | null
+          id?: string
+          last_active?: string | null
+          last_name?: string | null
+          quiz_points?: number | null
+          study_hours?: number | null
+          task_points?: number | null
+          telegram_id?: number
+          total_points?: number | null
+          updated_at?: string | null
+          username?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      update_leaderboard: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never
