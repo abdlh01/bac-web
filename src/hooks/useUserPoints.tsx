@@ -22,32 +22,68 @@ export const useUserPoints = (telegramId?: number) => {
 
   const fetchUserPoints = async () => {
     if (!telegramId) {
+      console.log('No telegram ID provided for points fetch');
       setLoading(false);
       return;
     }
 
     try {
       console.log('Fetching points for telegram_id:', telegramId);
-      const { data, error } = await supabase
+      
+      // البحث عن المستخدم أولاً
+      const { data: userData, error: userError } = await supabase
         .from('users')
         .select('total_points, task_points, quiz_points, counter_points, study_hours')
         .eq('telegram_id', telegramId)
-        .single();
+        .maybeSingle();
 
-      if (data && !error) {
-        console.log('User points fetched:', data);
+      if (userError) {
+        console.error('Error fetching user points:', userError);
+        // إنشاء مستخدم جديد إذا لم يكن موجوداً
+        if (userError.code === 'PGRST116') {
+          console.log('User not found, creating new user...');
+          const { data: newUser, error: createError } = await supabase
+            .from('users')
+            .insert({
+              telegram_id: telegramId,
+              total_points: 0,
+              task_points: 0,
+              quiz_points: 0,
+              counter_points: 0,
+              study_hours: 0,
+            })
+            .select('total_points, task_points, quiz_points, counter_points, study_hours')
+            .single();
+
+          if (createError) {
+            console.error('Error creating new user:', createError);
+          } else {
+            console.log('New user created:', newUser);
+            if (newUser) {
+              setPoints({
+                total_points: newUser.total_points || 0,
+                task_points: newUser.task_points || 0,
+                quiz_points: newUser.quiz_points || 0,
+                counter_points: newUser.counter_points || 0,
+                study_hours: newUser.study_hours || 0,
+              });
+            }
+          }
+        }
+      } else if (userData) {
+        console.log('User points fetched successfully:', userData);
         setPoints({
-          total_points: data.total_points || 0,
-          task_points: data.task_points || 0,
-          quiz_points: data.quiz_points || 0,
-          counter_points: data.counter_points || 0,
-          study_hours: data.study_hours || 0,
+          total_points: userData.total_points || 0,
+          task_points: userData.task_points || 0,
+          quiz_points: userData.quiz_points || 0,
+          counter_points: userData.counter_points || 0,
+          study_hours: userData.study_hours || 0,
         });
       } else {
-        console.error('Error fetching user points:', error);
+        console.log('No user data found');
       }
     } catch (error) {
-      console.error('Error fetching user points:', error);
+      console.error('Unexpected error fetching user points:', error);
     } finally {
       setLoading(false);
     }

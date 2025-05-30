@@ -17,19 +17,53 @@ declare global {
             username?: string;
             photo_url?: string;
           };
+          query_id?: string;
+          auth_date?: number;
+          hash?: string;
         };
         ready: () => void;
         expand: () => void;
         close: () => void;
+        version: string;
+        platform: string;
+        colorScheme: string;
+        themeParams: any;
+        isExpanded: boolean;
+        viewportHeight: number;
+        viewportStableHeight: number;
+        headerColor: string;
+        backgroundColor: string;
       };
     };
   }
 }
 
 // تهيئة Telegram WebApp
-if (window.Telegram?.WebApp) {
-  window.Telegram.WebApp.ready();
-  window.Telegram.WebApp.expand();
-}
+const initTelegramWebApp = () => {
+  console.log('Checking for Telegram WebApp...');
+  
+  if (window.Telegram?.WebApp) {
+    console.log('Telegram WebApp detected!');
+    console.log('WebApp version:', window.Telegram.WebApp.version);
+    console.log('Platform:', window.Telegram.WebApp.platform);
+    console.log('Init data length:', window.Telegram.WebApp.initData?.length || 0);
+    
+    // تهيئة التطبيق
+    window.Telegram.WebApp.ready();
+    window.Telegram.WebApp.expand();
+    
+    // طباعة معلومات المستخدم إن وجدت
+    if (window.Telegram.WebApp.initDataUnsafe?.user) {
+      console.log('User found in Telegram WebApp:', window.Telegram.WebApp.initDataUnsafe.user);
+    } else {
+      console.log('No user data in Telegram WebApp');
+    }
+  } else {
+    console.log('Telegram WebApp not found - running in browser/development mode');
+  }
+};
+
+// تشغيل التهيئة
+initTelegramWebApp();
 
 createRoot(document.getElementById("root")!).render(<App />);

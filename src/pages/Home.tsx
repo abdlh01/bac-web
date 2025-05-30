@@ -10,6 +10,9 @@ const Home = () => {
   const { user, loading: userLoading } = useTelegramUser();
   const { points, loading: pointsLoading } = useUserPoints(user?.id);
 
+  console.log('Home page - User data:', user);
+  console.log('Home page - Points data:', points);
+
   if (userLoading || pointsLoading) {
     return (
       <div className="min-h-screen gradient-bg flex items-center justify-center">
@@ -31,6 +34,7 @@ const Home = () => {
             alt={userName}
             className="w-24 h-24 rounded-full border-4 border-white/30 fade-in-out"
             onError={(e) => {
+              console.log('Error loading user avatar, using fallback');
               e.currentTarget.src = "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face";
             }}
           />
@@ -85,6 +89,17 @@ const Home = () => {
           عرض المهام
         </Button>
       </div>
+
+      {/* معلومات التطوير للتشخيص */}
+      {process.env.NODE_ENV === 'development' && (
+        <div className="mt-4 p-3 bg-black/20 rounded-lg text-white text-xs">
+          <p>معلومات التشخيص:</p>
+          <p>معرف المستخدم: {user?.id}</p>
+          <p>اسم المستخدم: {user?.first_name} {user?.last_name}</p>
+          <p>صورة المستخدم: {user?.photo_url ? 'متوفرة' : 'غير متوفرة'}</p>
+          <p>إجمالي النقاط: {points.total_points}</p>
+        </div>
+      )}
     </div>
   );
 };
