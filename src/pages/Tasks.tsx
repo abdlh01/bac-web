@@ -1,48 +1,158 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, ExternalLink, Check } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useTelegramUser } from "@/hooks/useTelegramUser";
 
 const Tasks = () => {
   const navigate = useNavigate();
-  const [completedTasks, setCompletedTasks] = useState<number[]>([]);
+  const { user } = useTelegramUser();
+  const [tasks, setTasks] = useState<any[]>([]);
+  const [completedTasks, setCompletedTasks] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const tasks = [
-    {
-      id: 1,
-      title: "اشترك في قناة Askeladd",
-      description: "قناة شخصية تحتوي على محتوى تعليمي ومفيد",
-      url: "https://t.me/Askeladd_Channel",
-      points: 50
-    },
-    {
-      id: 2,
-      title: "اشترك في قناة البكالوريا",
-      description: "قناة مخصصة لطلاب البكالوريا مع نصائح ومراجعات",
-      url: "https://t.me/bac4youu",
-      points: 50
-    },
-    {
-      id: 3,
-      title: "اشترك في قناة التقنية",
-      description: "قناة تقنية تحتوي على آخر الأخبار والتطورات",
-      url: "https://t.me/xx_4you",
-      points: 50
+  useEffect(() => {
+    if (user?.id) {
+      fetchTasks();
+      fetchCompletedTasks();
     }
-  ];
+  }, [user?.id]);
 
-  const handleTaskComplete = (taskId: number) => {
-    if (!completedTasks.includes(taskId)) {
+  const fetchTasks = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('tasks')
+        .select('*')
+        .eq('is_active', true);
+
+      if (error) {
+        console.error('Error fetching tasks:', error);
+        // استخدام المهام الافتراضية إذا فشل الجلب من قاعدة البيانات
+        setTasks([
+          {
+            id: '1',
+            title: "اشترك في قناة Askeladd",
+            description: "قناة شخصية تحتوي على محتوى تعليمي ومفيد",
+            channel_url: "https://t.me/Askeladd_Channel",
+            points: 50
+          },
+          {
+            id: '2',
+            title: "اشترك في قناة البكالوريا",
+            description: "قناة مخصصة لطلاب البكالوريا مع نصائح ومراجعات",
+            channel_url: "https://t.me/bac4youu",
+            points: 50
+          },
+          {
+            id: '3',
+            title: "اشترك في قناة التقنية",
+            description: "قناة تقنية تحتوي على آخر الأخبار والتطورات",
+            channel_url: "https://t.me/xx_4you",
+            points: 50
+          }
+        ]);
+      } else {
+        setTasks(data || []);
+      }
+    } catch (error) {
+      console.error('Unexpected error fetching tasks:', error);
+    }
+  };
+
+  const fetchCompletedTasks = async () => {
+    if (!user?.id) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('user_tasks')
+        .select('task_id')
+        .eq('user_id', user.id.toString());
+
+      if (error) {
+        console.error('Error fetching completed tasks:', error);
+      } else {
+        const completed = data?.map(item => item.task_id) || [];
+        setCompletedTasks(completed);
+      }
+    } catch (error) {
+      console.error('Unexpected error fetching completed tasks:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleTaskComplete = async (taskId: string, points: number) => {
+    if (!user?.id || completedTasks.includes(taskId)) return;
+
+    try {
+      console.log('Completing task:', taskId, 'for user:', user.id, 'points:', points);
+
+      // تسجيل إكمال المهمة
+      const { error: taskError } = await supabase
+        .from('user_tasks')
+        .insert({
+          user_id: user.id.toString(),
+          task_id: taskId
+        });
+
+      if (taskError) {
+        console.error('Error saving task completion:', taskError);
+        return;
+      }
+
+      // الحصول على النقاط الحالية
+      const { data: currentUser, error: userError } = await supabase
+        .from('users')
+        .select('task_points, total_points')
+        .eq('telegram_id', user.id)
+        .single();
+
+      if (userError) {
+        console.error('Error fetching current user points:', userError);
+        return;
+      }
+
+      // تحديث النقاط
+      const newTaskPoints = (currentUser?.task_points || 0) + points;
+      const newTotalPoints = (currentUser?.total_points || 0) + points;
+
+      const { error: updateError } = await supabase
+        .from('users')
+        .update({
+          task_points: newTaskPoints,
+          total_points: newTotalPoints
+        })
+        .eq('telegram_id', user.id);
+
+      if (updateError) {
+        console.error('Error updating user points:', updateError);
+        return;
+      }
+
+      console.log('Task completed successfully! New points:', newTotalPoints);
+      
+      // تحديث الواجهة
       setCompletedTasks([...completedTasks, taskId]);
-      // هنا يمكن إضافة النقاط للمستخدم
+      
+    } catch (error) {
+      console.error('Unexpected error completing task:', error);
     }
   };
 
-  const openChannel = (url: string, taskId: number) => {
+  const openChannel = (url: string, taskId: string, points: number) => {
     window.open(url, '_blank');
-    handleTaskComplete(taskId);
+    handleTaskComplete(taskId, points);
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen gradient-bg flex items-center justify-center">
+        <div className="text-white text-lg">جاري التحميل...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen gradient-bg p-6">
@@ -77,7 +187,7 @@ const Tasks = () => {
                   </div>
                 ) : (
                   <Button
-                    onClick={() => openChannel(task.url, task.id)}
+                    onClick={() => openChannel(task.channel_url, task.id, task.points)}
                     size="sm"
                     className="bg-purple-600 hover:bg-purple-700 text-white"
                   >
@@ -93,7 +203,7 @@ const Tasks = () => {
         <div className="mt-8 glass rounded-2xl p-4 text-center">
           <h3 className="font-bold text-white mb-2">إجمالي النقاط المحتملة</h3>
           <div className="text-2xl font-bold text-yellow-300">
-            {tasks.reduce((total, task) => total + task.points, 0)} نقطة
+            {tasks.reduce((total, task) => total + (task.points || 0), 0)} نقطة
           </div>
         </div>
       </div>

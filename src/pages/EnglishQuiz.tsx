@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -40,6 +41,7 @@ const EnglishQuiz = () => {
 
       if (error) {
         console.error('Error fetching questions:', error);
+        setFallbackQuestions();
         return;
       }
 
@@ -47,27 +49,49 @@ const EnglishQuiz = () => {
         setQuestions(data);
       } else {
         console.log('No questions found in database, using fallback data');
-        // استخدام بيانات احتياطية
-        setQuestions([
-          {
-            id: "1",
-            question: "What does 'corruption' mean?",
-            options: ["النزاهة", "الفساد", "العدالة", "الصدق"],
-            correct_answer: 1
-          },
-          {
-            id: "2", 
-            question: "What is the opposite of 'healthy'?",
-            options: ["صحي", "مريض", "قوي", "نشط"],
-            correct_answer: 1
-          }
-        ]);
+        setFallbackQuestions();
       }
     } catch (error) {
       console.error('Error:', error);
+      setFallbackQuestions();
     } finally {
       setLoading(false);
     }
+  };
+
+  const setFallbackQuestions = () => {
+    setQuestions([
+      {
+        id: "1",
+        question: "What does 'corruption' mean?",
+        options: ["النزاهة", "الفساد", "العدالة", "الصدق"],
+        correct_answer: 1
+      },
+      {
+        id: "2", 
+        question: "What is the opposite of 'healthy'?",
+        options: ["صحي", "مريض", "قوي", "نشط"],
+        correct_answer: 1
+      },
+      {
+        id: "3",
+        question: "What does 'environment' mean?",
+        options: ["البيئة", "المناخ", "الطقس", "الفصول"],
+        correct_answer: 0
+      },
+      {
+        id: "4",
+        question: "What is the meaning of 'education'?",
+        options: ["الثقافة", "التعليم", "المعرفة", "الخبرة"],
+        correct_answer: 1
+      },
+      {
+        id: "5",
+        question: "What does 'technology' mean?",
+        options: ["العلم", "التقنية", "الاختراع", "الآلة"],
+        correct_answer: 1
+      }
+    ]);
   };
 
   useEffect(() => {
@@ -107,15 +131,20 @@ const EnglishQuiz = () => {
   };
 
   const saveQuizResult = async (finalAnswers: number[]) => {
-    if (!user) return;
+    if (!user?.id) {
+      console.log('No user ID available for saving quiz result');
+      return;
+    }
 
     try {
       const finalScore = finalAnswers.reduce((acc, answer, index) => {
         return answer === questions[index]?.correct_answer ? acc + 5 : acc;
       }, 0);
 
+      console.log('Saving quiz result - Score:', finalScore, 'User:', user.id);
+
       // حفظ نتيجة الكويز
-      await supabase
+      const { error: quizError } = await supabase
         .from('quiz_results')
         .insert({
           user_id: user.id.toString(),
@@ -126,23 +155,40 @@ const EnglishQuiz = () => {
           answers: finalAnswers,
         });
 
-      // تحديث نقاط المستخدم
-      const { data: currentUser } = await supabase
+      if (quizError) {
+        console.error('Error saving quiz result:', quizError);
+        return;
+      }
+
+      // الحصول على النقاط الحالية
+      const { data: currentUser, error: userError } = await supabase
         .from('users')
         .select('quiz_points, total_points')
         .eq('telegram_id', user.id)
         .single();
 
+      if (userError) {
+        console.error('Error fetching current user:', userError);
+        return;
+      }
+
+      // تحديث نقاط المستخدم
       const newQuizPoints = (currentUser?.quiz_points || 0) + finalScore;
       const newTotalPoints = (currentUser?.total_points || 0) + finalScore;
 
-      await supabase
+      const { error: updateError } = await supabase
         .from('users')
         .update({
           quiz_points: newQuizPoints,
           total_points: newTotalPoints,
         })
         .eq('telegram_id', user.id);
+
+      if (updateError) {
+        console.error('Error updating user points:', updateError);
+      } else {
+        console.log('Quiz completed successfully! Total points:', newTotalPoints);
+      }
 
     } catch (error) {
       console.error('Error saving quiz result:', error);
