@@ -24,7 +24,7 @@ const Ranking = () => {
       <h1 className="text-2xl font-bold text-white text-center mb-8">التصنيف</h1>
 
       {/* الثلاثة الأوائل */}
-      <div className="flex justify-center items-end mb-8 space-x-4">
+      <div className="flex justify-center items-end mb-8 space-x-6 rtl:space-x-reverse">
         {/* المركز الثاني */}
         <div className="text-center">
           <div className="glass rounded-xl p-3 mb-2">

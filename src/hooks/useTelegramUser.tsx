@@ -22,6 +22,7 @@ export const useTelegramUser = () => {
           const tgUser = window.Telegram.WebApp.initDataUnsafe?.user;
           if (tgUser) {
             setUser(tgUser);
+            console.log('Telegram User Data:', tgUser);
             
             // حفظ أو تحديث بيانات المستخدم في Supabase
             const { data, error } = await supabase
@@ -39,8 +40,11 @@ export const useTelegramUser = () => {
 
             if (error) {
               console.error('Error saving user:', error);
+            } else {
+              console.log('User saved successfully:', data);
             }
           } else {
+            console.log('No Telegram user data found, using demo data');
             // بيانات تجريبية للتطوير
             setUser({
               id: 123456789,
@@ -50,6 +54,7 @@ export const useTelegramUser = () => {
             });
           }
         } else {
+          console.log('Telegram WebApp not available, using demo data');
           // بيانات تجريبية للتطوير
           setUser({
             id: 123456789,

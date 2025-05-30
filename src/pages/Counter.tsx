@@ -61,10 +61,20 @@ const Counter = () => {
           });
 
         // تحديث نقاط المستخدم
+        const { data: currentUser } = await supabase
+          .from('users')
+          .select('counter_points, total_points')
+          .eq('telegram_id', user.id)
+          .single();
+
+        const newCounterPoints = (currentUser?.counter_points || 0) + points;
+        const newTotalPoints = (currentUser?.total_points || 0) + points;
+
         await supabase
           .from('users')
           .update({
-            counter_points: points,
+            counter_points: newCounterPoints,
+            total_points: newTotalPoints,
             study_hours: time / 3600,
           })
           .eq('telegram_id', user.id);
@@ -86,13 +96,13 @@ const Counter = () => {
   };
 
   return (
-    <div className="min-h-screen gradient-bg-reverse flex flex-col items-center justify-start pt-16 p-6 overflow-hidden">
+    <div className="min-h-screen gradient-bg-reverse flex flex-col items-center justify-center p-6 overflow-hidden">
       <div className="text-center w-full max-w-sm">
-        <p className="text-white/80 text-sm mb-16">كل ثانية تساوي نقطة واحدة</p>
+        <p className="text-white/80 text-sm mb-8">كل ثانية تساوي نقطة واحدة</p>
         
-        <div className="relative mb-16 flex justify-center">
+        <div className="relative mb-8 flex justify-center">
           <div 
-            className={`w-32 h-32 rounded-full glass flex items-center justify-center ${
+            className={`w-32 h-32 rounded-full glass flex items-center justify-center mx-auto ${
               isRunning ? 'pulse-ring' : ''
             }`}
           >
@@ -104,7 +114,7 @@ const Counter = () => {
           </div>
         </div>
 
-        <div className="glass rounded-2xl p-6 mb-16">
+        <div className="glass rounded-2xl p-6 mb-8">
           <div className="text-2xl font-bold text-white mb-1">{points}</div>
           <div className="text-white/80 text-sm">النقاط المجمعة</div>
         </div>

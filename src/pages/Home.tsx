@@ -40,9 +40,6 @@ const Home = () => {
           <div className="text-3xl font-bold text-white mb-1">{points.total_points}</div>
           <div className="text-white/80 text-sm">إجمالي النقاط</div>
         </div>
-        <div className="text-white/80 text-sm mb-4">
-          درست {points.study_hours.toFixed(1)} ساعات اليوم
-        </div>
       </div>
 
       {/* ترتيب المستخدم */}
