@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -141,10 +140,10 @@ const EnglishQuiz = () => {
         return answer === questions[index]?.correct_answer ? acc + 5 : acc;
       }, 0);
 
-      console.log('Saving quiz result - Score:', finalScore, 'User ID:', user.id);
+      console.log('Saving English quiz result - Score:', finalScore, 'User ID:', user.id);
 
       // حفظ نتيجة الكويز
-      const { error: quizError } = await supabase
+      const { data: quizResult, error: quizError } = await supabase
         .from('quiz_results')
         .insert({
           user_id: user.id.toString(),
@@ -153,41 +152,60 @@ const EnglishQuiz = () => {
           total_questions: questions.length,
           points_earned: finalScore,
           answers: finalAnswers,
-        });
+        })
+        .select()
+        .single();
 
       if (quizError) {
         console.error('Error saving quiz result:', quizError);
         return;
       }
 
+      console.log('Quiz result saved successfully:', quizResult);
+
       // الحصول على النقاط الحالية للمستخدم
       const { data: currentUser, error: userError } = await supabase
         .from('users')
         .select('quiz_points, total_points')
         .eq('telegram_id', user.id)
-        .single();
+        .maybeSingle();
 
       if (userError) {
         console.error('Error fetching current user:', userError);
         return;
       }
 
-      // تحديث نقاط المستخدم
-      const newQuizPoints = (currentUser?.quiz_points || 0) + finalScore;
-      const newTotalPoints = (currentUser?.total_points || 0) + finalScore;
+      if (!currentUser) {
+        console.error('User not found in database');
+        return;
+      }
 
-      const { error: updateError } = await supabase
+      // تحديث نقاط المستخدم
+      const newQuizPoints = (currentUser.quiz_points || 0) + finalScore;
+      const newTotalPoints = (currentUser.total_points || 0) + finalScore;
+
+      console.log('Updating user points:', {
+        oldQuizPoints: currentUser.quiz_points,
+        newQuizPoints,
+        oldTotalPoints: currentUser.total_points,
+        newTotalPoints,
+        addedPoints: finalScore
+      });
+
+      const { data: updatedUser, error: updateError } = await supabase
         .from('users')
         .update({
           quiz_points: newQuizPoints,
           total_points: newTotalPoints,
         })
-        .eq('telegram_id', user.id);
+        .eq('telegram_id', user.id)
+        .select()
+        .single();
 
       if (updateError) {
         console.error('Error updating user points:', updateError);
       } else {
-        console.log('Quiz completed successfully! Total points:', newTotalPoints);
+        console.log('English quiz completed successfully! Updated user:', updatedUser);
       }
 
     } catch (error) {

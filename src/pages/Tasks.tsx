@@ -90,48 +90,67 @@ const Tasks = () => {
       console.log('Completing task:', taskId, 'for user:', user.id, 'points:', points);
 
       // تسجيل إكمال المهمة
-      const { error: taskError } = await supabase
+      const { data: taskCompletion, error: taskError } = await supabase
         .from('user_tasks')
         .insert({
           user_id: user.id.toString(),
           task_id: taskId
-        });
+        })
+        .select()
+        .single();
 
       if (taskError) {
         console.error('Error saving task completion:', taskError);
         return;
       }
 
+      console.log('Task completion saved:', taskCompletion);
+
       // الحصول على النقاط الحالية
       const { data: currentUser, error: userError } = await supabase
         .from('users')
         .select('task_points, total_points')
         .eq('telegram_id', user.id)
-        .single();
+        .maybeSingle();
 
       if (userError) {
         console.error('Error fetching current user points:', userError);
         return;
       }
 
-      // تحديث النقاط
-      const newTaskPoints = (currentUser?.task_points || 0) + points;
-      const newTotalPoints = (currentUser?.total_points || 0) + points;
+      if (!currentUser) {
+        console.error('User not found in database');
+        return;
+      }
 
-      const { error: updateError } = await supabase
+      // تحديث النقاط
+      const newTaskPoints = (currentUser.task_points || 0) + points;
+      const newTotalPoints = (currentUser.total_points || 0) + points;
+
+      console.log('Updating task points:', {
+        oldTaskPoints: currentUser.task_points,
+        newTaskPoints,
+        oldTotalPoints: currentUser.total_points,
+        newTotalPoints,
+        addedPoints: points
+      });
+
+      const { data: updatedUser, error: updateError } = await supabase
         .from('users')
         .update({
           task_points: newTaskPoints,
           total_points: newTotalPoints
         })
-        .eq('telegram_id', user.id);
+        .eq('telegram_id', user.id)
+        .select()
+        .single();
 
       if (updateError) {
         console.error('Error updating user points:', updateError);
         return;
       }
 
-      console.log('Task completed successfully! New points:', newTotalPoints);
+      console.log('Task completed successfully! Updated user:', updatedUser);
       
       // تحديث الواجهة
       setCompletedTasks([...completedTasks, taskId]);
