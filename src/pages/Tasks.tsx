@@ -84,12 +84,35 @@ const Tasks = () => {
   };
 
   const handleTaskComplete = async (taskId: string, points: number) => {
-    if (!user?.id || completedTasks.includes(taskId)) return;
+    if (!user?.id || completedTasks.includes(taskId)) {
+      console.log('Task already completed or no user');
+      return;
+    }
 
     try {
-      console.log('Completing task:', taskId, 'for user:', user.id, 'points:', points);
+      console.log('=== STARTING TASK COMPLETION ===');
+      console.log('Task ID:', taskId);
+      console.log('User ID:', user.id);
+      console.log('Points to add:', points);
 
-      // تسجيل إكمال المهمة
+      // أولاً: التحقق من وجود المستخدم في قاعدة البيانات
+      console.log('Checking if user exists in database...');
+      const { data: existingUser, error: userCheckError } = await supabase
+        .from('users')
+        .select('id, telegram_id, task_points, total_points')
+        .eq('telegram_id', user.id)
+        .single();
+
+      if (userCheckError || !existingUser) {
+        console.error('User not found in database:', userCheckError);
+        alert('خطأ: لم يتم العثور على المستخدم في قاعدة البيانات');
+        return;
+      }
+
+      console.log('User found in database:', existingUser);
+
+      // ثانياً: تسجيل إكمال المهمة
+      console.log('Recording task completion...');
       const { data: taskCompletion, error: taskError } = await supabase
         .from('user_tasks')
         .insert({
@@ -101,39 +124,21 @@ const Tasks = () => {
 
       if (taskError) {
         console.error('Error saving task completion:', taskError);
+        alert('خطأ في حفظ إكمال المهمة');
         return;
       }
 
-      console.log('Task completion saved:', taskCompletion);
+      console.log('Task completion recorded:', taskCompletion);
 
-      // الحصول على النقاط الحالية
-      const { data: currentUser, error: userError } = await supabase
-        .from('users')
-        .select('task_points, total_points')
-        .eq('telegram_id', user.id)
-        .maybeSingle();
+      // ثالثاً: تحديث النقاط
+      const newTaskPoints = (existingUser.task_points || 0) + points;
+      const newTotalPoints = (existingUser.total_points || 0) + points;
 
-      if (userError) {
-        console.error('Error fetching current user points:', userError);
-        return;
-      }
-
-      if (!currentUser) {
-        console.error('User not found in database');
-        return;
-      }
-
-      // تحديث النقاط
-      const newTaskPoints = (currentUser.task_points || 0) + points;
-      const newTotalPoints = (currentUser.total_points || 0) + points;
-
-      console.log('Updating task points:', {
-        oldTaskPoints: currentUser.task_points,
-        newTaskPoints,
-        oldTotalPoints: currentUser.total_points,
-        newTotalPoints,
-        addedPoints: points
-      });
+      console.log('Updating points...');
+      console.log('Old task points:', existingUser.task_points);
+      console.log('New task points:', newTaskPoints);
+      console.log('Old total points:', existingUser.total_points);
+      console.log('New total points:', newTotalPoints);
 
       const { data: updatedUser, error: updateError } = await supabase
         .from('users')
@@ -147,20 +152,25 @@ const Tasks = () => {
 
       if (updateError) {
         console.error('Error updating user points:', updateError);
+        alert('خطأ في تحديث النقاط');
         return;
       }
 
-      console.log('Task completed successfully! Updated user:', updatedUser);
+      console.log('Points updated successfully!', updatedUser);
+      console.log('=== TASK COMPLETION FINISHED ===');
       
       // تحديث الواجهة
       setCompletedTasks([...completedTasks, taskId]);
+      alert(`تم إكمال المهمة بنجاح! حصلت على ${points} نقطة`);
       
     } catch (error) {
       console.error('Unexpected error completing task:', error);
+      alert('خطأ غير متوقع');
     }
   };
 
   const openChannel = (url: string, taskId: string, points: number) => {
+    console.log('Opening channel and completing task:', { url, taskId, points });
     window.open(url, '_blank');
     handleTaskComplete(taskId, points);
   };

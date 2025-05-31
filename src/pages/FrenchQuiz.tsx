@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -72,9 +73,29 @@ const FrenchQuiz = () => {
     }
 
     try {
-      console.log('Saving French quiz result - Score:', finalScore, 'User ID:', user.id);
+      console.log('=== STARTING FRENCH QUIZ SAVE ===');
+      console.log('User ID:', user.id);
+      console.log('Final score:', finalScore);
+      console.log('Final answers:', finalAnswers);
+
+      // التحقق من وجود المستخدم في قاعدة البيانات
+      console.log('Checking if user exists in database...');
+      const { data: existingUser, error: userCheckError } = await supabase
+        .from('users')
+        .select('id, telegram_id, quiz_points, total_points')
+        .eq('telegram_id', user.id)
+        .single();
+
+      if (userCheckError || !existingUser) {
+        console.error('User not found in database:', userCheckError);
+        alert('خطأ: لم يتم العثور على المستخدم في قاعدة البيانات');
+        return;
+      }
+
+      console.log('User found in database:', existingUser);
 
       // حفظ نتيجة الكويز
+      console.log('Saving quiz result...');
       const { data: quizResult, error: quizError } = await supabase
         .from('quiz_results')
         .insert({
@@ -90,39 +111,21 @@ const FrenchQuiz = () => {
 
       if (quizError) {
         console.error('Error saving French quiz result:', quizError);
+        alert('خطأ في حفظ نتيجة الكويز');
         return;
       }
 
       console.log('Quiz result saved successfully:', quizResult);
 
-      // الحصول على النقاط الحالية للمستخدم
-      const { data: currentUser, error: userError } = await supabase
-        .from('users')
-        .select('quiz_points, total_points')
-        .eq('telegram_id', user.id)
-        .maybeSingle();
-
-      if (userError) {
-        console.error('Error fetching current user:', userError);
-        return;
-      }
-
-      if (!currentUser) {
-        console.error('User not found in database');
-        return;
-      }
-
       // تحديث نقاط المستخدم
-      const newQuizPoints = (currentUser.quiz_points || 0) + finalScore;
-      const newTotalPoints = (currentUser.total_points || 0) + finalScore;
+      const newQuizPoints = (existingUser.quiz_points || 0) + finalScore;
+      const newTotalPoints = (existingUser.total_points || 0) + finalScore;
 
-      console.log('Updating user points:', {
-        oldQuizPoints: currentUser.quiz_points,
-        newQuizPoints,
-        oldTotalPoints: currentUser.total_points,
-        newTotalPoints,
-        addedPoints: finalScore
-      });
+      console.log('Updating user points...');
+      console.log('Old quiz points:', existingUser.quiz_points);
+      console.log('New quiz points:', newQuizPoints);
+      console.log('Old total points:', existingUser.total_points);
+      console.log('New total points:', newTotalPoints);
 
       const { data: updatedUser, error: updateError } = await supabase
         .from('users')
@@ -136,12 +139,16 @@ const FrenchQuiz = () => {
 
       if (updateError) {
         console.error('Error updating user points:', updateError);
+        alert('خطأ في تحديث النقاط');
       } else {
         console.log('French quiz completed successfully! Updated user:', updatedUser);
+        console.log('=== FRENCH QUIZ SAVE FINISHED ===');
+        alert(`تم إكمال الكويز بنجاح! حصلت على ${finalScore} نقطة`);
       }
 
     } catch (error) {
       console.error('Error saving French quiz result:', error);
+      alert('خطأ غير متوقع');
     }
   };
 
