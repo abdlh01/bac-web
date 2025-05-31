@@ -35,26 +35,65 @@ export const useTelegramUser = () => {
             setUser(tgUser);
             
             try {
-              // حفظ أو تحديث بيانات المستخدم في Supabase
-              const { data, error } = await supabase
+              // التحقق من وجود المستخدم أولاً
+              const { data: existingUser, error: fetchError } = await supabase
                 .from('users')
-                .upsert({
-                  telegram_id: tgUser.id,
-                  first_name: tgUser.first_name,
-                  last_name: tgUser.last_name || null,
-                  username: tgUser.username || null,
-                  avatar_url: tgUser.photo_url || null,
-                  last_active: new Date().toISOString(),
-                }, {
-                  onConflict: 'telegram_id'
-                })
-                .select()
-                .single();
+                .select('*')
+                .eq('telegram_id', tgUser.id)
+                .maybeSingle();
 
-              if (error) {
-                console.error('Error saving user to Supabase:', error);
+              if (fetchError) {
+                console.error('Error fetching user:', fetchError);
+              }
+
+              if (existingUser) {
+                console.log('User already exists, updating last_active:', existingUser);
+                // تحديث آخر نشاط فقط
+                const { error: updateError } = await supabase
+                  .from('users')
+                  .update({
+                    last_active: new Date().toISOString(),
+                    avatar_url: tgUser.photo_url || existingUser.avatar_url,
+                    first_name: tgUser.first_name || existingUser.first_name,
+                    last_name: tgUser.last_name || existingUser.last_name,
+                    username: tgUser.username || existingUser.username,
+                  })
+                  .eq('telegram_id', tgUser.id);
+
+                if (updateError) {
+                  console.error('Error updating user:', updateError);
+                } else {
+                  console.log('User updated successfully');
+                }
               } else {
-                console.log('User saved successfully to Supabase:', data);
+                console.log('Creating new user...');
+                // إنشاء مستخدم جديد
+                const { data: newUser, error: insertError } = await supabase
+                  .from('users')
+                  .insert({
+                    telegram_id: tgUser.id,
+                    first_name: tgUser.first_name,
+                    last_name: tgUser.last_name || null,
+                    username: tgUser.username || null,
+                    avatar_url: tgUser.photo_url || null,
+                    total_points: 0,
+                    task_points: 0,
+                    quiz_points: 0,
+                    counter_points: 0,
+                    study_hours: 0,
+                    last_active: new Date().toISOString(),
+                  })
+                  .select()
+                  .single();
+
+                if (insertError) {
+                  console.error('Error creating new user:', insertError);
+                  console.error('Insert error details:', insertError.details);
+                  console.error('Insert error hint:', insertError.hint);
+                  console.error('Insert error message:', insertError.message);
+                } else {
+                  console.log('New user created successfully:', newUser);
+                }
               }
             } catch (dbError) {
               console.error('Database error:', dbError);
@@ -74,36 +113,43 @@ export const useTelegramUser = () => {
             setUser(demoUser);
             
             try {
-              // حفظ البيانات التجريبية
-              const { data, error } = await supabase
+              // التحقق من المستخدم التجريبي
+              const { data: existingUser } = await supabase
                 .from('users')
-                .upsert({
-                  telegram_id: demoUser.id,
-                  first_name: demoUser.first_name,
-                  last_name: demoUser.last_name,
-                  avatar_url: demoUser.photo_url,
-                  last_active: new Date().toISOString(),
-                }, {
-                  onConflict: 'telegram_id'
-                })
-                .select()
-                .single();
+                .select('*')
+                .eq('telegram_id', demoUser.id)
+                .maybeSingle();
 
-              if (error) {
-                console.error('Error saving demo user:', error);
-              } else {
-                console.log('Demo user saved:', data);
+              if (!existingUser) {
+                const { data, error } = await supabase
+                  .from('users')
+                  .insert({
+                    telegram_id: demoUser.id,
+                    first_name: demoUser.first_name,
+                    last_name: demoUser.last_name,
+                    avatar_url: demoUser.photo_url,
+                    total_points: 0,
+                    task_points: 0,
+                    quiz_points: 0,
+                    counter_points: 0,
+                    study_hours: 0,
+                    last_active: new Date().toISOString(),
+                  })
+                  .select()
+                  .single();
+
+                if (error) {
+                  console.error('Error saving demo user:', error);
+                } else {
+                  console.log('Demo user saved:', data);
+                }
               }
             } catch (dbError) {
               console.error('Demo user database error:', dbError);
             }
           }
         } else {
-          console.log('Telegram WebApp not available');
-          console.log('This might be because:');
-          console.log('1. App is not running inside Telegram');
-          console.log('2. Telegram WebApp script not loaded');
-          console.log('3. App is in development mode');
+          console.log('Telegram WebApp not available - using demo user');
           
           // بيانات تجريبية للتطوير المحلي
           const demoUser = {
@@ -114,6 +160,44 @@ export const useTelegramUser = () => {
           };
           
           setUser(demoUser);
+
+          try {
+            // التحقق من المستخدم التجريبي
+            const { data: existingUser } = await supabase
+              .from('users')
+              .select('*')
+              .eq('telegram_id', demoUser.id)
+              .maybeSingle();
+
+            if (!existingUser) {
+              const { data, error } = await supabase
+                .from('users')
+                .insert({
+                  telegram_id: demoUser.id,
+                  first_name: demoUser.first_name,
+                  last_name: demoUser.last_name,
+                  avatar_url: demoUser.photo_url,
+                  total_points: 0,
+                  task_points: 0,
+                  quiz_points: 0,
+                  counter_points: 0,
+                  study_hours: 0,
+                  last_active: new Date().toISOString(),
+                })
+                .select()
+                .single();
+
+              if (error) {
+                console.error('Error saving demo user:', error);
+              } else {
+                console.log('Demo user created:', data);
+              }
+            } else {
+              console.log('Demo user already exists:', existingUser);
+            }
+          } catch (dbError) {
+            console.error('Demo user database error:', dbError);
+          }
         }
       } catch (error) {
         console.error('Error in initTelegramUser:', error);

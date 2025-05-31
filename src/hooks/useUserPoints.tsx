@@ -30,7 +30,10 @@ export const useUserPoints = (telegramId?: number) => {
     try {
       console.log('Fetching points for telegram_id:', telegramId);
       
-      // البحث عن المستخدم أولاً
+      // انتظار قصير للتأكد من إنشاء المستخدم
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // البحث عن المستخدم
       const { data: userData, error: userError } = await supabase
         .from('users')
         .select('total_points, task_points, quiz_points, counter_points, study_hours')
@@ -52,36 +55,14 @@ export const useUserPoints = (telegramId?: number) => {
           study_hours: userData.study_hours || 0,
         });
       } else {
-        console.log('No user data found, creating new user...');
-        
-        // إنشاء مستخدم جديد إذا لم يكن موجوداً
-        const { data: newUser, error: createError } = await supabase
-          .from('users')
-          .insert({
-            telegram_id: telegramId,
-            total_points: 0,
-            task_points: 0,
-            quiz_points: 0,
-            counter_points: 0,
-            study_hours: 0,
-          })
-          .select('total_points, task_points, quiz_points, counter_points, study_hours')
-          .single();
-
-        if (createError) {
-          console.error('Error creating new user:', createError);
-        } else {
-          console.log('New user created:', newUser);
-          if (newUser) {
-            setPoints({
-              total_points: newUser.total_points || 0,
-              task_points: newUser.task_points || 0,
-              quiz_points: newUser.quiz_points || 0,
-              counter_points: newUser.counter_points || 0,
-              study_hours: newUser.study_hours || 0,
-            });
-          }
-        }
+        console.log('User not found, using default points');
+        setPoints({
+          total_points: 0,
+          task_points: 0,
+          quiz_points: 0,
+          counter_points: 0,
+          study_hours: 0,
+        });
       }
     } catch (error) {
       console.error('Unexpected error fetching user points:', error);
