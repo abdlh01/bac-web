@@ -141,7 +141,7 @@ const EnglishQuiz = () => {
         return answer === questions[index]?.correct_answer ? acc + 5 : acc;
       }, 0);
 
-      console.log('Saving quiz result - Score:', finalScore, 'User:', user.id);
+      console.log('Saving quiz result - Score:', finalScore, 'User ID:', user.id);
 
       // حفظ نتيجة الكويز
       const { error: quizError } = await supabase
@@ -160,7 +160,7 @@ const EnglishQuiz = () => {
         return;
       }
 
-      // الحصول على النقاط الحالية
+      // الحصول على النقاط الحالية للمستخدم
       const { data: currentUser, error: userError } = await supabase
         .from('users')
         .select('quiz_points, total_points')

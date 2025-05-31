@@ -1,12 +1,14 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Clock } from "lucide-react";
 import { frenchQuestions } from "@/data/quizData";
+import { supabase } from "@/integrations/supabase/client";
+import { useTelegramUser } from "@/hooks/useTelegramUser";
 
 const FrenchQuiz = () => {
   const navigate = useNavigate();
+  const { user } = useTelegramUser();
   const [showInstructions, setShowInstructions] = useState(true);
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
@@ -46,15 +48,82 @@ const FrenchQuiz = () => {
     }
   };
 
-  const completeQuiz = (finalAnswers: number[]) => {
+  const completeQuiz = async (finalAnswers: number[]) => {
     let correctCount = 0;
     finalAnswers.forEach((answer, index) => {
       if (answer === frenchQuestions[index].correctAnswer) {
         correctCount++;
       }
     });
+    const finalScore = correctCount * 5; // 5 نقاط لكل إجابة صحيحة
     setScore(correctCount);
     setQuizCompleted(true);
+
+    // حفظ النتائج في قاعدة البيانات
+    if (user?.id) {
+      await saveQuizResult(finalAnswers, finalScore);
+    }
+  };
+
+  const saveQuizResult = async (finalAnswers: number[], finalScore: number) => {
+    if (!user?.id) {
+      console.log('No user ID available for saving quiz result');
+      return;
+    }
+
+    try {
+      console.log('Saving French quiz result - Score:', finalScore, 'User ID:', user.id);
+
+      // حفظ نتيجة الكويز
+      const { error: quizError } = await supabase
+        .from('quiz_results')
+        .insert({
+          user_id: user.id.toString(),
+          subject: 'french',
+          score: finalScore,
+          total_questions: frenchQuestions.length,
+          points_earned: finalScore,
+          answers: finalAnswers,
+        });
+
+      if (quizError) {
+        console.error('Error saving French quiz result:', quizError);
+        return;
+      }
+
+      // الحصول على النقاط الحالية للمستخدم
+      const { data: currentUser, error: userError } = await supabase
+        .from('users')
+        .select('quiz_points, total_points')
+        .eq('telegram_id', user.id)
+        .single();
+
+      if (userError) {
+        console.error('Error fetching current user:', userError);
+        return;
+      }
+
+      // تحديث نقاط المستخدم
+      const newQuizPoints = (currentUser?.quiz_points || 0) + finalScore;
+      const newTotalPoints = (currentUser?.total_points || 0) + finalScore;
+
+      const { error: updateError } = await supabase
+        .from('users')
+        .update({
+          quiz_points: newQuizPoints,
+          total_points: newTotalPoints,
+        })
+        .eq('telegram_id', user.id);
+
+      if (updateError) {
+        console.error('Error updating user points:', updateError);
+      } else {
+        console.log('French quiz completed successfully! Total points:', newTotalPoints);
+      }
+
+    } catch (error) {
+      console.error('Error saving French quiz result:', error);
+    }
   };
 
   if (showInstructions) {
