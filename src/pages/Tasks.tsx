@@ -94,8 +94,6 @@ const Tasks = () => {
       console.log('User ID:', user.id);
       console.log('Points to add:', points);
 
-      // أولاً: التحقق من وجود المستخدم في قاعدة البيانات
-      console.log('Checking if user exists in database...');
       const { data: existingUser, error: userCheckError } = await supabase
         .from('users')
         .select('id, telegram_id, task_points, total_points')
@@ -104,18 +102,15 @@ const Tasks = () => {
 
       if (userCheckError || !existingUser) {
         console.error('User not found in database:', userCheckError);
-        alert('خطأ: لم يتم العثور على المستخدم في قاعدة البيانات');
         return;
       }
 
       console.log('User found in database:', existingUser);
 
-      // ثانياً: تسجيل إكمال المهمة - استخدام UUID بدلاً من string
-      console.log('Recording task completion...');
       const { data: taskCompletion, error: taskError } = await supabase
         .from('user_tasks')
         .insert({
-          user_id: existingUser.id, // استخدام UUID من قاعدة البيانات
+          user_id: existingUser.id,
           task_id: taskId
         })
         .select()
@@ -123,13 +118,11 @@ const Tasks = () => {
 
       if (taskError) {
         console.error('Error saving task completion:', taskError);
-        alert('خطأ في حفظ إكمال المهمة: ' + taskError.message);
         return;
       }
 
       console.log('Task completion recorded:', taskCompletion);
 
-      // ثالثاً: تحديث النقاط
       const newTaskPoints = (existingUser.task_points || 0) + points;
       const newTotalPoints = (existingUser.total_points || 0) + points;
 
@@ -151,20 +144,17 @@ const Tasks = () => {
 
       if (updateError) {
         console.error('Error updating user points:', updateError);
-        alert('خطأ في تحديث النقاط: ' + updateError.message);
         return;
       }
 
       console.log('Points updated successfully!', updatedUser);
       console.log('=== TASK COMPLETION FINISHED ===');
       
-      // تحديث الواجهة
+      // تحديث الواجهة بدون رسائل
       setCompletedTasks([...completedTasks, taskId]);
-      alert(`تم إكمال المهمة بنجاح! حصلت على ${points} نقطة`);
       
     } catch (error) {
       console.error('Unexpected error completing task:', error);
-      alert('خطأ غير متوقع: ' + (error as Error).message);
     }
   };
 
@@ -209,21 +199,18 @@ const Tasks = () => {
                     <span>نقطة</span>
                   </div>
                 </div>
-                {completedTasks.includes(task.id) ? (
-                  <div className="bg-green-500 p-2 rounded-full">
-                    <Check className="w-4 h-4 text-white" />
-                  </div>
-                ) : (
-                  <Button
-                    onClick={() => openChannel(task.channel_url, task.id, task.points)}
-                    size="sm"
-                    className="bg-purple-600 hover:bg-purple-700 text-white"
-                  >
-                    <ExternalLink className="w-4 h-4 ml-1" />
-                    انتقال
-                  </Button>
-                )}
+                <div className="bg-green-500 p-2 rounded-full">
+                  <Check className="w-4 h-4 text-white" />
+                </div>
               </div>
+              <Button
+                onClick={() => openChannel(task.channel_url, task.id, task.points)}
+                size="sm"
+                className="w-full bg-purple-600 hover:bg-purple-700 text-white"
+              >
+                <ExternalLink className="w-4 h-4 ml-1" />
+                انتقال
+              </Button>
             </div>
           ))}
         </div>

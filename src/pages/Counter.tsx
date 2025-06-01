@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTelegramUser } from "@/hooks/useTelegramUser";
@@ -150,22 +149,20 @@ const Counter = () => {
 
   const toggleTimer = async () => {
     if (!isRunning) {
-      // بدء العداد
       await startSession();
       setIsRunning(true);
     } else {
-      // إيقاف العداد وحفظ النتائج
       setIsRunning(false);
       await saveCounterSession();
     }
   };
 
   return (
-    <div className="min-h-screen gradient-bg-reverse flex flex-col items-center p-6 pt-20">
+    <div className="min-h-screen gradient-bg-reverse flex flex-col items-center justify-center p-6">
       <div className="text-center w-full max-w-sm">
-        <p className="text-white/80 text-sm mb-12">كل ثانية تساوي نقطة واحدة</p>
+        <p className="text-white/80 text-sm mb-8">كل ثانية تساوي نقطة واحدة</p>
         
-        <div className="relative mb-16 flex justify-center">
+        <div className="relative mb-12 flex justify-center">
           <div 
             className={`w-40 h-40 rounded-full glass flex items-center justify-center mx-auto ${
               isRunning ? 'pulse-ring' : ''
@@ -179,7 +176,7 @@ const Counter = () => {
           </div>
         </div>
 
-        <div className="glass rounded-2xl p-8 mb-16">
+        <div className="glass rounded-2xl p-6 mb-12">
           <div className="text-3xl font-bold text-white mb-2">{points}</div>
           <div className="text-white/80 text-sm">النقاط المجمعة</div>
         </div>

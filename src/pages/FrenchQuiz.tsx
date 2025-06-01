@@ -77,8 +77,6 @@ const FrenchQuiz = () => {
       console.log('Final score:', finalScore);
       console.log('Final answers:', finalAnswers);
 
-      // التحقق من وجود المستخدم في قاعدة البيانات
-      console.log('Checking if user exists in database...');
       const { data: existingUser, error: userCheckError } = await supabase
         .from('users')
         .select('id, telegram_id, quiz_points, total_points')
@@ -87,18 +85,15 @@ const FrenchQuiz = () => {
 
       if (userCheckError || !existingUser) {
         console.error('User not found in database:', userCheckError);
-        alert('خطأ: لم يتم العثور على المستخدم في قاعدة البيانات');
         return;
       }
 
       console.log('User found in database:', existingUser);
 
-      // حفظ نتيجة الكويز - استخدام UUID بدلاً من string
-      console.log('Saving quiz result...');
       const { data: quizResult, error: quizError } = await supabase
         .from('quiz_results')
         .insert({
-          user_id: existingUser.id, // استخدام UUID من قاعدة البيانات
+          user_id: existingUser.id,
           subject: 'french',
           score: finalScore,
           total_questions: frenchQuestions.length,
@@ -110,13 +105,11 @@ const FrenchQuiz = () => {
 
       if (quizError) {
         console.error('Error saving French quiz result:', quizError);
-        alert('خطأ في حفظ نتيجة الكويز: ' + quizError.message);
         return;
       }
 
       console.log('Quiz result saved successfully:', quizResult);
 
-      // تحديث نقاط المستخدم
       const newQuizPoints = (existingUser.quiz_points || 0) + finalScore;
       const newTotalPoints = (existingUser.total_points || 0) + finalScore;
 
@@ -138,16 +131,13 @@ const FrenchQuiz = () => {
 
       if (updateError) {
         console.error('Error updating user points:', updateError);
-        alert('خطأ في تحديث النقاط: ' + updateError.message);
       } else {
         console.log('French quiz completed successfully! Updated user:', updatedUser);
         console.log('=== FRENCH QUIZ SAVE FINISHED ===');
-        alert(`تم إكمال الكويز بنجاح! حصلت على ${finalScore} نقطة`);
       }
 
     } catch (error) {
       console.error('Error saving French quiz result:', error);
-      alert('خطأ غير متوقع: ' + (error as Error).message);
     }
   };
 
@@ -215,8 +205,8 @@ const FrenchQuiz = () => {
   }
 
   return (
-    <div className="min-h-screen gradient-bg p-6">
-      <div className="pt-8">
+    <div className="min-h-screen gradient-bg p-6 flex flex-col">
+      <div className="pt-8 flex-1 flex flex-col">
         <div className="flex items-center justify-between mb-6">
           <Button
             onClick={() => navigate(-1)}
@@ -232,7 +222,7 @@ const FrenchQuiz = () => {
           </div>
         </div>
 
-        <div className="glass rounded-2xl p-6">
+        <div className="glass rounded-2xl p-6 flex-1 flex flex-col justify-center">
           <div className="flex justify-between items-center mb-4">
             <span className="text-white/80 text-sm">السؤال {currentQuestion + 1} من {frenchQuestions.length}</span>
             <div className="text-yellow-300 text-sm font-bold">5 نقاط</div>

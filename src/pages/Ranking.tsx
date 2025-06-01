@@ -1,7 +1,8 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTelegramUser } from "@/hooks/useTelegramUser";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 
 interface UserRank {
   rank: number;
@@ -113,95 +114,79 @@ const Ranking = () => {
     );
   }
 
-  const topThree = rankings.slice(0, 3);
-  const otherRanks = rankings.slice(3, 10);
-  const pointsNeeded = otherRanks.length > 0 && currentUserRank 
-    ? Math.max(0, otherRanks[otherRanks.length - 1].points - currentUserRank.points + 1)
+  const topTen = rankings.slice(0, 10);
+  const pointsNeeded = topTen.length > 0 && currentUserRank 
+    ? Math.max(0, topTen[topTen.length - 1].points - currentUserRank.points + 1)
     : 0;
+
+  const getRankBadgeColor = (rank: number) => {
+    if (rank === 1) return "bg-yellow-500";
+    if (rank === 2) return "bg-gray-400";
+    if (rank === 3) return "bg-orange-500";
+    return "bg-blue-500";
+  };
 
   return (
     <div className="min-h-screen gradient-bg p-6 pt-12">
       <h1 className="text-2xl font-bold text-white text-center mb-8">التصنيف</h1>
 
-      {/* الثلاثة الأوائل - تحسين التصميم */}
-      <div className="flex justify-center items-end mb-8 space-x-4 rtl:space-x-reverse">
-        {/* المركز الثاني */}
-        {topThree[1] && (
-          <div className="text-center">
-            <div className="glass rounded-xl p-3 mb-2">
-              <img 
-                src={topThree[1].avatar || "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop&crop=face"} 
-                alt={topThree[1].name} 
-                className="w-16 h-16 rounded-full mx-auto mb-2" 
-              />
-              <div className="text-white font-bold text-sm">{topThree[1].name}</div>
-              <div className="text-yellow-300 text-xs">{topThree[1].points}</div>
-            </div>
-            <div className="bg-gray-400 text-white w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold mx-auto">2</div>
-          </div>
-        )}
-
-        {/* المركز الأول - في الوسط */}
-        {topThree[0] && (
-          <div className="text-center -mt-6 mx-4">
-            <div className="glass rounded-xl p-4 mb-2">
-              <img 
-                src={topThree[0].avatar || "https://images.unsplash.com/photo-1494790108755-2616b612b647?w=100&h=100&fit=crop&crop=face"} 
-                alt={topThree[0].name} 
-                className="w-20 h-20 rounded-full mx-auto mb-2" 
-              />
-              <div className="text-white font-bold">{topThree[0].name}</div>
-              <div className="text-yellow-300">{topThree[0].points}</div>
-            </div>
-            <div className="bg-yellow-500 text-white w-10 h-10 rounded-full flex items-center justify-center font-bold mx-auto">1</div>
-          </div>
-        )}
-
-        {/* المركز الثالث */}
-        {topThree[2] && (
-          <div className="text-center">
-            <div className="glass rounded-xl p-3 mb-2">
-              <img 
-                src={topThree[2].avatar || "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&h=100&fit=crop&crop=face"} 
-                alt={topThree[2].name} 
-                className="w-16 h-16 rounded-full mx-auto mb-2" 
-              />
-              <div className="text-white font-bold text-sm">{topThree[2].name}</div>
-              <div className="text-yellow-300 text-xs">{topThree[2].points}</div>
-            </div>
-            <div className="bg-orange-500 text-white w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold mx-auto">3</div>
-          </div>
-        )}
-      </div>
-
-      {/* الترتيب من 4-10 */}
-      {otherRanks.length > 0 && (
-        <div className="glass rounded-2xl p-4 mb-6">
-          {otherRanks.map((userRank) => (
-            <div key={userRank.rank} className="flex items-center justify-between py-3 border-b border-white/10 last:border-b-0">
-              <div className="flex items-center">
-                <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-white font-bold text-sm ml-3">
+      {/* العشرة الأوائل */}
+      <div className="glass rounded-2xl p-6 mb-6">
+        <h2 className="text-xl font-bold text-white mb-4 text-center">العشرة الأوائل</h2>
+        <div className="space-y-3">
+          {topTen.map((userRank) => (
+            <div key={userRank.rank} className="flex items-center justify-between p-3 bg-white/5 rounded-xl">
+              <div className="flex items-center space-x-3 rtl:space-x-reverse">
+                <Badge className={`${getRankBadgeColor(userRank.rank)} text-white font-bold w-8 h-8 rounded-full flex items-center justify-center`}>
                   {userRank.rank}
+                </Badge>
+                <Avatar className="w-10 h-10">
+                  <AvatarImage 
+                    src={userRank.avatar || `https://images.unsplash.com/photo-${userRank.rank % 2 === 0 ? '1494790108755-2616b612b647' : '1507003211169-0a1dd7228f2d'}?w=100&h=100&fit=crop&crop=face`} 
+                    alt={userRank.name} 
+                  />
+                  <AvatarFallback className="bg-gray-500 text-white">
+                    {userRank.name.charAt(0)}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <div className="text-white font-medium">{userRank.name}</div>
+                  <div className="text-white/60 text-sm">{userRank.points} نقطة</div>
                 </div>
-                <span className="text-white font-medium">{userRank.name}</span>
               </div>
-              <div className="text-yellow-300 font-bold">{userRank.points}</div>
+              {userRank.rank <= 3 && (
+                <div className="text-2xl">
+                  {userRank.rank === 1 ? '🥇' : userRank.rank === 2 ? '🥈' : '🥉'}
+                </div>
+              )}
             </div>
           ))}
         </div>
-      )}
+      </div>
 
       {/* ترتيب المستخدم الحالي */}
-      {currentUserRank && (
+      {currentUserRank && currentUserRank.rank > 10 && (
         <div className="glass rounded-2xl p-4 mb-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold text-sm ml-3">
+          <h3 className="text-lg font-bold text-white mb-3 text-center">ترتيبك الحالي</h3>
+          <div className="flex items-center justify-between p-3 bg-blue-500/20 rounded-xl">
+            <div className="flex items-center space-x-3 rtl:space-x-reverse">
+              <Badge className="bg-blue-500 text-white font-bold w-8 h-8 rounded-full flex items-center justify-center">
                 {currentUserRank.rank}
+              </Badge>
+              <Avatar className="w-10 h-10">
+                <AvatarImage 
+                  src={currentUserRank.avatar || "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop&crop=face"} 
+                  alt={currentUserRank.name} 
+                />
+                <AvatarFallback className="bg-gray-500 text-white">
+                  {currentUserRank.name.charAt(0)}
+                </AvatarFallback>
+              </Avatar>
+              <div>
+                <div className="text-white font-bold">أنت ({currentUserRank.name})</div>
+                <div className="text-white/60 text-sm">{currentUserRank.points} نقطة</div>
               </div>
-              <span className="text-white font-bold">أنت ({currentUserRank.name})</span>
             </div>
-            <div className="text-yellow-300 font-bold">{currentUserRank.points}</div>
           </div>
         </div>
       )}
@@ -209,7 +194,7 @@ const Ranking = () => {
       {/* رسالة التحفيز */}
       {pointsNeeded > 0 && (
         <div className="text-center text-white/80 text-sm">
-          تحتاج إلى <span className="text-yellow-300 font-bold">{pointsNeeded}</span> نقطة للدخول مع الـ10 الأوائل اجتهد
+          تحتاج إلى <span className="text-yellow-300 font-bold">{pointsNeeded}</span> نقطة للدخول مع الـ10 الأوائل
         </div>
       )}
     </div>
