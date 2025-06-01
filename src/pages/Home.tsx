@@ -4,16 +4,19 @@ import { Button } from "@/components/ui/button";
 import { Trophy, Target, Brain, Clock } from "lucide-react";
 import { useTelegramUser } from "@/hooks/useTelegramUser";
 import { useUserPoints } from "@/hooks/useUserPoints";
+import { useUserRanking } from "@/hooks/useUserRanking";
 
 const Home = () => {
   const navigate = useNavigate();
   const { user, loading: userLoading } = useTelegramUser();
   const { points, loading: pointsLoading } = useUserPoints(user?.id);
+  const { rank, loading: rankLoading } = useUserRanking(user?.id);
 
   console.log('Home page - User data:', user);
   console.log('Home page - Points data:', points);
+  console.log('Home page - Rank data:', rank);
 
-  if (userLoading || pointsLoading) {
+  if (userLoading || pointsLoading || rankLoading) {
     return (
       <div className="min-h-screen gradient-bg flex items-center justify-center">
         <div className="text-white text-lg">جاري التحميل...</div>
@@ -52,7 +55,9 @@ const Home = () => {
           <Trophy className="w-5 h-5 ml-2" />
           <span>ترتيبك الحالي</span>
         </div>
-        <div className="text-2xl font-bold text-white">#--</div>
+        <div className="text-2xl font-bold text-white">
+          {rank ? `#${rank}` : 'غير مصنف'}
+        </div>
       </div>
 
       {/* إحصائيات النقاط */}
@@ -98,6 +103,7 @@ const Home = () => {
           <p>اسم المستخدم: {user?.first_name} {user?.last_name}</p>
           <p>صورة المستخدم: {user?.photo_url ? 'متوفرة' : 'غير متوفرة'}</p>
           <p>إجمالي النقاط: {points.total_points}</p>
+          <p>الترتيب: {rank || 'غير محدد'}</p>
         </div>
       )}
     </div>

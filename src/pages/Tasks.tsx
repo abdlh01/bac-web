@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -111,12 +110,12 @@ const Tasks = () => {
 
       console.log('User found in database:', existingUser);
 
-      // ثانياً: تسجيل إكمال المهمة
+      // ثانياً: تسجيل إكمال المهمة - استخدام UUID بدلاً من string
       console.log('Recording task completion...');
       const { data: taskCompletion, error: taskError } = await supabase
         .from('user_tasks')
         .insert({
-          user_id: user.id.toString(),
+          user_id: existingUser.id, // استخدام UUID من قاعدة البيانات
           task_id: taskId
         })
         .select()
@@ -124,7 +123,7 @@ const Tasks = () => {
 
       if (taskError) {
         console.error('Error saving task completion:', taskError);
-        alert('خطأ في حفظ إكمال المهمة');
+        alert('خطأ في حفظ إكمال المهمة: ' + taskError.message);
         return;
       }
 
@@ -152,7 +151,7 @@ const Tasks = () => {
 
       if (updateError) {
         console.error('Error updating user points:', updateError);
-        alert('خطأ في تحديث النقاط');
+        alert('خطأ في تحديث النقاط: ' + updateError.message);
         return;
       }
 
@@ -165,7 +164,7 @@ const Tasks = () => {
       
     } catch (error) {
       console.error('Unexpected error completing task:', error);
-      alert('خطأ غير متوقع');
+      alert('خطأ غير متوقع: ' + (error as Error).message);
     }
   };
 

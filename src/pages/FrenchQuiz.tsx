@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -94,12 +93,12 @@ const FrenchQuiz = () => {
 
       console.log('User found in database:', existingUser);
 
-      // حفظ نتيجة الكويز
+      // حفظ نتيجة الكويز - استخدام UUID بدلاً من string
       console.log('Saving quiz result...');
       const { data: quizResult, error: quizError } = await supabase
         .from('quiz_results')
         .insert({
-          user_id: user.id.toString(),
+          user_id: existingUser.id, // استخدام UUID من قاعدة البيانات
           subject: 'french',
           score: finalScore,
           total_questions: frenchQuestions.length,
@@ -111,7 +110,7 @@ const FrenchQuiz = () => {
 
       if (quizError) {
         console.error('Error saving French quiz result:', quizError);
-        alert('خطأ في حفظ نتيجة الكويز');
+        alert('خطأ في حفظ نتيجة الكويز: ' + quizError.message);
         return;
       }
 
@@ -139,7 +138,7 @@ const FrenchQuiz = () => {
 
       if (updateError) {
         console.error('Error updating user points:', updateError);
-        alert('خطأ في تحديث النقاط');
+        alert('خطأ في تحديث النقاط: ' + updateError.message);
       } else {
         console.log('French quiz completed successfully! Updated user:', updatedUser);
         console.log('=== FRENCH QUIZ SAVE FINISHED ===');
@@ -148,7 +147,7 @@ const FrenchQuiz = () => {
 
     } catch (error) {
       console.error('Error saving French quiz result:', error);
-      alert('خطأ غير متوقع');
+      alert('خطأ غير متوقع: ' + (error as Error).message);
     }
   };
 
