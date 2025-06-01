@@ -216,7 +216,7 @@ const Tasks = () => {
         </div>
 
         <div className="mt-8 glass rounded-2xl p-4 text-center">
-          <h3 className="font-bold text-white mb-2">إجمالي النقاط المحتملة</h3>
+          <h3 className="font-bold text-white mb-2">إجمالي النقاط التي يمكنك جمعها</h3>
           <div className="text-2xl font-bold text-yellow-300">
             {tasks.reduce((total, task) => total + (task.points || 0), 0)} نقطة
           </div>
