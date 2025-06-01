@@ -59,7 +59,7 @@ const Subjects = () => {
       <h1 className="text-2xl font-bold text-white text-center mb-4">البكالوريات السابقة</h1>
       
       <div className="text-center text-white/80 text-sm mb-8 px-4 leading-relaxed">
-        إختر أحد المواد و سيتم توجيهك لصفحة مراسلة البوت للحصول على ما تريد (أحيانا تكون داخل الصفحة لذلك عليك فقط إنزال هذه الصفحة للأسفل)
+        إختر أحد المواد و سيتم توجيهك لصفحة مراسلة البوت (لما تكون داخل صفحة المراسلة يجب عليك فقط إنزال التطبيق للأسفل)
       </div>
       
       <div className="space-y-4">
