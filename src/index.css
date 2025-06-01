@@ -80,27 +80,63 @@
 @layer base {
   * {
     @apply border-border;
+    /* منع الزوم على الأجهزة المحمولة */
+    touch-action: manipulation;
+  }
+
+  html {
+    /* منع الزوم */
+    -webkit-text-size-adjust: 100%;
+    -ms-text-size-adjust: 100%;
+    touch-action: manipulation;
   }
 
   body {
     @apply bg-background text-foreground;
     font-family: 'Cairo', sans-serif;
     direction: rtl;
+    /* تحسين الأداء */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    /* منع الزوم */
+    touch-action: manipulation;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+  }
+
+  /* تحسين أداء التنقل */
+  * {
+    box-sizing: border-box;
+  }
+
+  /* تسريع الرسوم المتحركة */
+  *,
+  *::before,
+  *::after {
+    transform: translateZ(0);
+    will-change: transform, opacity;
   }
 }
 
 .gradient-bg {
   background: linear-gradient(180deg, #1e3a8a 0%, #7c3aed 100%);
+  /* تحسين الأداء */
+  transform: translateZ(0);
 }
 
 .gradient-bg-reverse {
   background: linear-gradient(180deg, #7c3aed 0%, #1e3a8a 100%);
+  /* تحسين الأداء */
+  transform: translateZ(0);
 }
 
 .glass {
   background: rgba(255, 255, 255, 0.1);
   backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.2);
+  /* تحسين الأداء */
+  transform: translateZ(0);
 }
 
 .pulse-ring {
@@ -131,4 +167,16 @@
 @keyframes fadeInOut {
   0%, 100% { opacity: 0.3; }
   50% { opacity: 1; }
+}
+
+/* تحسين أداء التنقل */
+.transition-all {
+  transition: all 0.2s ease-out;
+}
+
+/* منع ظهور الروابط عند الضغط المطول */
+a, button {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
 }

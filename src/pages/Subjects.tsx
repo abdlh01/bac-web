@@ -50,12 +50,17 @@ const Subjects = () => {
   ];
 
   const openSubject = (url: string) => {
-    window.open(url, '_blank');
+    // فتح الرابط في نفس النافذة لتجنب الروابط المنبثقة
+    window.location.href = url;
   };
 
   return (
     <div className="min-h-screen p-6 pt-12">
-      <h1 className="text-2xl font-bold text-white text-center mb-8">البكالوريات</h1>
+      <h1 className="text-2xl font-bold text-white text-center mb-4">البكالوريات السابقة</h1>
+      
+      <div className="text-center text-white/80 text-sm mb-8 px-4 leading-relaxed">
+        إختر أحد المواد و سيتم توجيهك لصفحة مراسلة البوت للحصول على ما تريد
+      </div>
       
       <div className="space-y-4">
         {subjects.map((row, rowIndex) => (
@@ -71,17 +76,13 @@ const Subjects = () => {
               <button
                 key={subject.name}
                 onClick={() => openSubject(subject.url)}
-                className="glass rounded-xl p-4 text-white font-medium text-sm hover:bg-white/20 transition-all"
+                className="glass rounded-xl p-4 text-white font-medium text-sm hover:bg-white/20 transition-colors duration-200"
               >
                 {subject.name}
               </button>
             ))}
           </div>
         ))}
-      </div>
-
-      <div className="mt-8 text-center text-white/80 text-sm">
-        اضغط على أي مادة للحصول على مواضيع البكالوريا
       </div>
     </div>
   );
