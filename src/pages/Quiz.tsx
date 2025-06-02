@@ -23,8 +23,8 @@ const Subjects = () => {
   return (
     <div className="min-h-screen p-6 pt-12">
       <div className="text-center mb-8">
-        <h1 className="text-3xl font-bold text-white mb-4">مواد البكالوريا</h1>
-        <p className="text-white/80">اختر المادة التي تريد دراستها</p>
+        <h1 className="text-3xl font-bold text-white mb-4">قسم الكويز</h1>
+        <p className="text-white/80">اختر المادة التي تريد اختبار فيها نفسك</p>
       </div>
 
       <div className="grid grid-cols-2 gap-4 mb-6">
