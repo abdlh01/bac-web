@@ -12,7 +12,7 @@ const Counter = () => {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const pointsIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const continueTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const stopTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     if (isRunning) {
@@ -46,39 +46,34 @@ const Counter = () => {
     };
   }, [isRunning]);
 
-  // التعامل مع مغادرة الصفحة
+  // التعامل مع مغادرة الصفحة فقط (وليس إخفاءها)
   useEffect(() => {
     const handleBeforeUnload = () => {
       if (isRunning) {
-        setIsRunning(false);
-        // إيقاف العداد بعد 5 دقائق (300 ثانية)
-        continueTimeoutRef.current = setTimeout(() => {
+        // إيقاف العداد بعد 5 دقائق (300 ثانية) من مغادرة الصفحة
+        stopTimeoutRef.current = setTimeout(() => {
           handleStop();
         }, 300000);
       }
     };
 
-    const handleVisibilityChange = () => {
-      if (document.hidden && isRunning) {
-        setIsRunning(false);
-        continueTimeoutRef.current = setTimeout(() => {
-          handleStop();
-        }, 300000);
-      } else if (!document.hidden && continueTimeoutRef.current) {
-        clearTimeout(continueTimeoutRef.current);
-        continueTimeoutRef.current = null;
-        setIsRunning(true);
+    const handlePageShow = () => {
+      // إلغاء التوقف التلقائي عند العودة للصفحة
+      if (stopTimeoutRef.current) {
+        clearTimeout(stopTimeoutRef.current);
+        stopTimeoutRef.current = null;
       }
     };
 
+    // استخدام beforeunload للتعامل مع مغادرة الصفحة فقط
     window.addEventListener('beforeunload', handleBeforeUnload);
-    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('pageshow', handlePageShow);
 
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      if (continueTimeoutRef.current) {
-        clearTimeout(continueTimeoutRef.current);
+      window.removeEventListener('pageshow', handlePageShow);
+      if (stopTimeoutRef.current) {
+        clearTimeout(stopTimeoutRef.current);
       }
     };
   }, [isRunning]);
@@ -206,9 +201,9 @@ const Counter = () => {
     } finally {
       setTime(0);
       setSessionId(null);
-      if (continueTimeoutRef.current) {
-        clearTimeout(continueTimeoutRef.current);
-        continueTimeoutRef.current = null;
+      if (stopTimeoutRef.current) {
+        clearTimeout(stopTimeoutRef.current);
+        stopTimeoutRef.current = null;
       }
     }
   };

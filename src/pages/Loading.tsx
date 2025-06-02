@@ -1,5 +1,6 @@
 
 import { useEffect, useState } from "react";
+import { GraduationCap } from "lucide-react";
 
 const Loading = () => {
   const [progress, setProgress] = useState(0);
@@ -23,7 +24,7 @@ const Loading = () => {
       <div className="text-center text-white">
         <div className="mb-8">
           <div className="w-24 h-24 mx-auto mb-4 rounded-full glass flex items-center justify-center">
-            <span className="text-3xl font-bold">📚</span>
+            <GraduationCap className="w-12 h-12 text-white" />
           </div>
           <h1 className="text-2xl font-bold mb-2">تطبيقكم للبكالوريا</h1>
           <p className="text-lg opacity-80">تنافس واجمع أكبر عدد من النقاط</p>
