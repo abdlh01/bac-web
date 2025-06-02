@@ -95,7 +95,7 @@ const Referrals = () => {
     if (!referralData?.referralCode) return '';
     
     // إنشاء رابط الإحالة
-    const botUsername = 'your_bot_username'; // استبدل بـ username البوت الحقيقي
+    const botUsername = 'MyBACPlus_bot'; // استبدل بـ username البوت الحقيقي
     return `https://t.me/${botUsername}?start=${referralData.referralCode}`;
   };
 
