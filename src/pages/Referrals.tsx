@@ -8,14 +8,15 @@ import { useTelegramUser } from "@/hooks/useTelegramUser";
 import { useToast } from "@/hooks/use-toast";
 
 interface ReferralData {
-  referral_code: string;
-  referral_points: number;
-  total_referrals: number;
-  referred_users: Array<{
+  referralCode: string;
+  referredUsers: number;
+  totalPoints: number;
+  referrals: Array<{
+    id: string;
     first_name: string;
-    last_name: string;
-    total_points: number;
+    last_name?: string;
     created_at: string;
+    points_earned: number;
   }>;
 }
 
@@ -30,40 +31,57 @@ const Referrals = () => {
     if (user?.id) {
       fetchReferralData();
     }
-  }, [user?.id]);
+  }, [user]);
 
   const fetchReferralData = async () => {
     if (!user?.id) return;
 
     try {
-      // جلب بيانات المستخدم
+      // البحث عن المستخدم وكود الإحالة
       const { data: userData, error: userError } = await supabase
         .from('users')
-        .select('referral_code, referral_points, id')
+        .select('id, referral_code, referral_points')
         .eq('telegram_id', user.id)
         .single();
 
       if (userError || !userData) {
-        console.error('Error fetching user data:', userError);
+        console.error('User not found:', userError);
         return;
       }
 
-      // جلب المستخدمين المدعوين
-      const { data: referredUsers, error: referredError } = await supabase
-        .from('users')
-        .select('first_name, last_name, total_points, created_at')
-        .eq('referred_by', userData.id)
-        .order('created_at', { ascending: false });
+      // البحث عن المستخدمين المدعوين
+      const { data: referrals, error: referralsError } = await supabase
+        .from('referrals')
+        .select(`
+          id,
+          points_awarded,
+          created_at,
+          referred:users!referrals_referred_id_fkey(
+            first_name,
+            last_name,
+            created_at
+          )
+        `)
+        .eq('referrer_id', userData.id);
 
-      if (referredError) {
-        console.error('Error fetching referred users:', referredError);
+      if (referralsError) {
+        console.error('Error fetching referrals:', referralsError);
+        return;
       }
 
+      const processedReferrals = (referrals || []).map(ref => ({
+        id: ref.id,
+        first_name: ref.referred?.first_name || 'مستخدم',
+        last_name: ref.referred?.last_name,
+        created_at: ref.created_at,
+        points_earned: ref.points_awarded
+      }));
+
       setReferralData({
-        referral_code: userData.referral_code || '',
-        referral_points: userData.referral_points || 0,
-        total_referrals: referredUsers?.length || 0,
-        referred_users: referredUsers || []
+        referralCode: userData.referral_code || '',
+        referredUsers: processedReferrals.length,
+        totalPoints: userData.referral_points || 0,
+        referrals: processedReferrals
       });
 
     } catch (error) {
@@ -73,33 +91,60 @@ const Referrals = () => {
     }
   };
 
-  const copyReferralLink = () => {
-    if (!referralData?.referral_code) return;
-
-    const referralLink = `https://t.me/your_bot_username?start=${referralData.referral_code}`;
-    navigator.clipboard.writeText(referralLink);
+  const generateReferralLink = () => {
+    if (!referralData?.referralCode) return '';
     
-    toast({
-      title: "تم النسخ!",
-      description: "تم نسخ رابط الإحالة بنجاح",
-    });
+    // إنشاء رابط الإحالة
+    const botUsername = 'your_bot_username'; // استبدل بـ username البوت الحقيقي
+    return `https://t.me/${botUsername}?start=${referralData.referralCode}`;
+  };
+
+  const copyReferralLink = async () => {
+    const link = generateReferralLink();
+    
+    if (!link) {
+      toast({
+        title: "خطأ",
+        description: "لا يمكن إنشاء رابط الإحالة",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(link);
+      toast({
+        title: "تم النسخ!",
+        description: "تم نسخ رابط الإحالة إلى الحافظة",
+      });
+    } catch (error) {
+      // fallback للمتصفحات التي لا تدعم clipboard API
+      const textArea = document.createElement('textarea');
+      textArea.value = link;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
+      
+      toast({
+        title: "تم النسخ!",
+        description: "تم نسخ رابط الإحالة",
+      });
+    }
   };
 
   const shareReferralLink = () => {
-    if (!referralData?.referral_code) return;
-
-    const referralLink = `https://t.me/your_bot_username?start=${referralData.referral_code}`;
-    const message = `🎯 انضم إلى التطبيق واجمع النقاط!\n\n✨ احصل على نقاط مجانية عند التسجيل\n🎮 العب الكويزات واجمع المزيد\n⏰ استخدم العداد لتتبع وقت الدراسة\n\n👈 انقر على الرابط للانضمام:\n${referralLink}`;
-
+    const link = generateReferralLink();
+    const message = `انضم إلى تطبيق الدراسة واحصل على نقاط مجانية! استخدم رابطي الخاص: ${link}`;
+    
+    // التحقق من وجود Telegram Web App
     if (window.Telegram?.WebApp) {
-      window.Telegram.WebApp.switchInlineQuery(message, ['users', 'groups']);
+      // استخدام Telegram share إذا كان متاحاً
+      const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(message)}`;
+      window.open(shareUrl, '_blank');
     } else {
-      // للتطوير المحلي - نسخ الرسالة
-      navigator.clipboard.writeText(message);
-      toast({
-        title: "تم النسخ!",
-        description: "تم نسخ رسالة الإحالة",
-      });
+      // نسخ النص كبديل
+      copyReferralLink();
     }
   };
 
@@ -123,102 +168,107 @@ const Referrals = () => {
           >
             <ArrowRight className="w-5 h-5" />
           </Button>
-          <h1 className="text-2xl font-bold text-white">ادعُ أصدقاءك</h1>
+          <h1 className="text-2xl font-bold text-white">الإحالات</h1>
         </div>
 
-        {/* شرح نظام الإحالة */}
-        <div className="glass rounded-2xl p-6 mb-6">
-          <div className="text-center mb-4">
-            <Gift className="w-16 h-16 text-yellow-300 mx-auto mb-3" />
-            <h2 className="text-xl font-bold text-white mb-2">اربح 1000 نقطة لكل إحالة!</h2>
-            <p className="text-white/80 text-sm">
-              شارك رابطك مع الأصدقاء واحصل على 1000 نقطة عند تسجيل كل صديق جديد
-            </p>
+        {/* مقدمة نظام الإحالة */}
+        <div className="glass rounded-2xl p-6 mb-6 text-center">
+          <Users className="w-16 h-16 text-white mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-white mb-2">ادعُ أصدقاءك</h2>
+          <p className="text-white/80 mb-4">
+            احصل على 1000 نقطة لكل صديق تدعوه للانضمام إلى التطبيق
+          </p>
+          <div className="text-white/60 text-sm">
+            شارك رابطك مع الأصدقاء واحصل على النقاط فور انضمامهم
           </div>
         </div>
 
         {/* إحصائيات الإحالة */}
         <div className="grid grid-cols-2 gap-4 mb-6">
           <div className="glass rounded-xl p-4 text-center">
-            <Users className="w-8 h-8 text-blue-300 mx-auto mb-2" />
-            <div className="text-2xl font-bold text-white">{referralData?.total_referrals || 0}</div>
-            <div className="text-white/80 text-sm">الأصدقاء المدعوين</div>
-          </div>
-          <div className="glass rounded-xl p-4 text-center">
-            <Gift className="w-8 h-8 text-yellow-300 mx-auto mb-2" />
-            <div className="text-2xl font-bold text-white">{referralData?.referral_points || 0}</div>
+            <Gift className="w-8 h-8 text-green-400 mx-auto mb-2" />
+            <div className="text-2xl font-bold text-white">{referralData?.totalPoints || 0}</div>
             <div className="text-white/80 text-sm">نقاط الإحالة</div>
           </div>
+          <div className="glass rounded-xl p-4 text-center">
+            <Users className="w-8 h-8 text-blue-400 mx-auto mb-2" />
+            <div className="text-2xl font-bold text-white">{referralData?.referredUsers || 0}</div>
+            <div className="text-white/80 text-sm">أصدقاء مدعوين</div>
+          </div>
         </div>
 
-        {/* رابط الإحالة */}
+        {/* كود الإحالة وأزرار المشاركة */}
         <div className="glass rounded-2xl p-6 mb-6">
           <h3 className="text-lg font-bold text-white mb-4">رابط الإحالة الخاص بك</h3>
+          
           <div className="bg-white/10 rounded-lg p-3 mb-4">
-            <div className="text-white/80 text-sm break-all">
-              https://t.me/your_bot_username?start={referralData?.referral_code || 'LOADING'}
-            </div>
+            <div className="text-white/80 text-sm mb-1">كود الإحالة</div>
+            <div className="text-white font-mono text-lg">{referralData?.referralCode}</div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+
+          <div className="space-y-3">
             <Button
               onClick={copyReferralLink}
-              className="bg-blue-600 hover:bg-blue-700 text-white"
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white"
             >
-              <Copy className="w-4 h-4 ml-1" />
+              <Copy className="w-4 h-4 ml-2" />
               نسخ الرابط
             </Button>
+            
             <Button
               onClick={shareReferralLink}
-              className="bg-green-600 hover:bg-green-700 text-white"
+              className="w-full bg-green-600 hover:bg-green-700 text-white"
             >
-              <Share2 className="w-4 h-4 ml-1" />
-              مشاركة
+              <Share2 className="w-4 h-4 ml-2" />
+              مشاركة الرابط
             </Button>
-          </div>
-        </div>
-
-        {/* شرح كيفية الاستخدام */}
-        <div className="glass rounded-2xl p-6 mb-6">
-          <h3 className="text-lg font-bold text-white mb-4">كيفية استخدام رابط الإحالة</h3>
-          <div className="space-y-3 text-white/80 text-sm">
-            <div className="flex items-start">
-              <span className="bg-purple-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs ml-3 mt-0.5">1</span>
-              <span>انسخ رابط الإحالة الخاص بك</span>
-            </div>
-            <div className="flex items-start">
-              <span className="bg-purple-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs ml-3 mt-0.5">2</span>
-              <span>شاركه مع أصدقائك عبر تيليجرام أو أي منصة أخرى</span>
-            </div>
-            <div className="flex items-start">
-              <span className="bg-purple-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs ml-3 mt-0.5">3</span>
-              <span>عندما ينقر صديقك على الرابط ويسجل في التطبيق، ستحصل على 1000 نقطة</span>
-            </div>
           </div>
         </div>
 
         {/* قائمة الأصدقاء المدعوين */}
-        {referralData && referralData.referred_users.length > 0 && (
-          <div className="glass rounded-2xl p-6">
-            <h3 className="text-lg font-bold text-white mb-4">الأصدقاء المدعوين</h3>
-            <div className="space-y-3 max-h-64 overflow-y-auto">
-              {referralData.referred_users.map((referredUser, index) => (
-                <div key={index} className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
-                  <div>
-                    <div className="text-white font-medium">
-                      {referredUser.first_name} {referredUser.last_name || ''}
+        <div className="glass rounded-2xl p-6">
+          <h3 className="text-lg font-bold text-white mb-4">الأصدقاء المدعوين</h3>
+          
+          {referralData?.referrals && referralData.referrals.length > 0 ? (
+            <div className="space-y-3">
+              {referralData.referrals.map((referral) => (
+                <div key={referral.id} className="bg-white/10 rounded-lg p-4">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <div className="text-white font-medium">
+                        {referral.first_name} {referral.last_name || ''}
+                      </div>
+                      <div className="text-white/60 text-sm">
+                        انضم في {new Date(referral.created_at).toLocaleDateString('ar-SA')}
+                      </div>
                     </div>
-                    <div className="text-white/60 text-sm">
-                      {referredUser.total_points} نقطة
+                    <div className="text-green-400 font-bold">
+                      +{referral.points_earned}
                     </div>
-                  </div>
-                  <div className="text-green-400 text-sm">
-                    +1000 نقطة
                   </div>
                 </div>
               ))}
             </div>
+          ) : (
+            <div className="text-center text-white/60 py-8">
+              <Users className="w-12 h-12 mx-auto mb-3 opacity-50" />
+              <p>لم تدعُ أي أصدقاء بعد</p>
+              <p className="text-sm">ابدأ بمشاركة رابطك واحصل على النقاط!</p>
+            </div>
+          )}
+        </div>
+
+        {/* شرح نظام الإحالة */}
+        <div className="mt-6 glass rounded-2xl p-6">
+          <h3 className="text-lg font-bold text-white mb-3">كيف يعمل نظام الإحالة؟</h3>
+          <div className="text-white/80 text-sm space-y-2">
+            <p>• انسخ رابط الإحالة الخاص بك</p>
+            <p>• شارك الرابط مع أصدقائك</p>
+            <p>• عندما ينضم صديق جديد عبر رابطك، تحصل على 1000 نقطة</p>
+            <p>• يجب أن يكون الصديق جديداً على التطبيق</p>
+            <p>• النقاط تُضاف تلقائياً إلى حسابك</p>
           </div>
-        )}
+        </div>
       </div>
     </div>
   );

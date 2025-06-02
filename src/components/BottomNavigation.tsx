@@ -1,6 +1,6 @@
 
 import { useNavigate, useLocation } from "react-router-dom";
-import { Home, Trophy, BookOpen, Timer, Users } from "lucide-react";
+import { Home, Trophy, BookOpen, Timer, GraduationCap } from "lucide-react";
 
 const BottomNavigation = () => {
   const navigate = useNavigate();
@@ -11,7 +11,7 @@ const BottomNavigation = () => {
     { path: "/ranking", icon: Trophy, label: "التصنيف" },
     { path: "/quiz", icon: BookOpen, label: "كويز" },
     { path: "/counter", icon: Timer, label: "العداد" },
-    { path: "/subjects", icon: Users, label: "البكالوريات" },
+    { path: "/subjects", icon: GraduationCap, label: "البكالوريات" },
   ];
 
   const handleNavigation = (path: string) => {

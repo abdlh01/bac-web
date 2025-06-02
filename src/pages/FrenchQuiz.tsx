@@ -138,7 +138,7 @@ const FrenchQuiz = () => {
           total_questions: questions.length,
           points_earned: pointsEarned,
           time_taken: 300 - timeLeft,
-          answers: quizResults
+          answers: JSON.stringify(quizResults)
         });
 
       if (resultError) {
@@ -242,7 +242,7 @@ const FrenchQuiz = () => {
           </div>
 
           <Button
-            onClick={() => navigate('/subjects')}
+            onClick={() => navigate('/quiz')}
             className="w-full bg-purple-600 hover:bg-purple-700 text-white"
           >
             العودة للمواد
