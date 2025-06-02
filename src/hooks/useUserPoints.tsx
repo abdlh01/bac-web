@@ -7,6 +7,7 @@ interface UserPoints {
   task_points: number;
   quiz_points: number;
   counter_points: number;
+  referral_points: number;
   study_hours: number;
 }
 
@@ -16,6 +17,7 @@ export const useUserPoints = (telegramId?: number) => {
     task_points: 0,
     quiz_points: 0,
     counter_points: 0,
+    referral_points: 0,
     study_hours: 0,
   });
   const [loading, setLoading] = useState(true);
@@ -36,7 +38,7 @@ export const useUserPoints = (telegramId?: number) => {
       // البحث عن المستخدم
       const { data: userData, error: userError } = await supabase
         .from('users')
-        .select('total_points, task_points, quiz_points, counter_points, study_hours')
+        .select('total_points, task_points, quiz_points, counter_points, referral_points, study_hours')
         .eq('telegram_id', telegramId)
         .maybeSingle();
 
@@ -52,6 +54,7 @@ export const useUserPoints = (telegramId?: number) => {
           task_points: userData.task_points || 0,
           quiz_points: userData.quiz_points || 0,
           counter_points: userData.counter_points || 0,
+          referral_points: userData.referral_points || 0,
           study_hours: userData.study_hours || 0,
         });
       } else {
@@ -61,6 +64,7 @@ export const useUserPoints = (telegramId?: number) => {
           task_points: 0,
           quiz_points: 0,
           counter_points: 0,
+          referral_points: 0,
           study_hours: 0,
         });
       }
@@ -97,6 +101,7 @@ export const useUserPoints = (telegramId?: number) => {
               task_points: payload.new.task_points || 0,
               quiz_points: payload.new.quiz_points || 0,
               counter_points: payload.new.counter_points || 0,
+              referral_points: payload.new.referral_points || 0,
               study_hours: payload.new.study_hours || 0,
             });
           }

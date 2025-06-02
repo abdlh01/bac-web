@@ -1,7 +1,9 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Clock } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import { ArrowRight, Clock, CheckCircle, XCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTelegramUser } from "@/hooks/useTelegramUser";
 
@@ -12,22 +14,39 @@ interface Question {
   correct_answer: number;
 }
 
+interface QuizResult {
+  questionIndex: number;
+  selectedAnswer: number;
+  isCorrect: boolean;
+  question: string;
+  correctAnswer: string;
+  selectedAnswerText: string;
+}
+
 const FrenchQuiz = () => {
   const navigate = useNavigate();
   const { user } = useTelegramUser();
-  const [showInstructions, setShowInstructions] = useState(true);
+  const [questions, setQuestions] = useState<Question[]>([]);
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
-  const [answers, setAnswers] = useState<number[]>([]);
-  const [timeLeft, setTimeLeft] = useState(30);
-  const [quizCompleted, setQuizCompleted] = useState(false);
   const [score, setScore] = useState(0);
-  const [questions, setQuestions] = useState<Question[]>([]);
+  const [quizCompleted, setQuizCompleted] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [timeLeft, setTimeLeft] = useState(300); // 5 minutes
+  const [quizResults, setQuizResults] = useState<QuizResult[]>([]);
 
   useEffect(() => {
     fetchQuestions();
   }, []);
+
+  useEffect(() => {
+    if (timeLeft > 0 && !quizCompleted) {
+      const timer = setTimeout(() => setTimeLeft(timeLeft - 1), 1000);
+      return () => clearTimeout(timer);
+    } else if (timeLeft === 0) {
+      handleQuizComplete();
+    }
+  }, [timeLeft, quizCompleted]);
 
   const fetchQuestions = async () => {
     try {
@@ -35,62 +54,24 @@ const FrenchQuiz = () => {
         .from('quiz_questions')
         .select('*')
         .eq('subject', 'french')
-        .eq('is_active', true)
-        .limit(40);
+        .eq('is_active', true);
 
       if (error) {
-        console.error('Error fetching French questions:', error);
-        setFallbackQuestions();
+        console.error('Error fetching questions:', error);
         return;
       }
 
       if (data && data.length > 0) {
-        // خلط الأسئلة عشوائياً واختيار 40 سؤال
-        const shuffled = data.sort(() => 0.5 - Math.random());
-        setQuestions(shuffled.slice(0, 40));
-      } else {
-        console.log('No French questions found in database, using fallback data');
-        setFallbackQuestions();
+        // خلط الأسئلة واختيار 15 سؤال عشوائي من 40
+        const shuffled = [...data].sort(() => Math.random() - 0.5);
+        const selectedQuestions = shuffled.slice(0, 15);
+        setQuestions(selectedQuestions);
       }
     } catch (error) {
-      console.error('Error:', error);
-      setFallbackQuestions();
+      console.error('Unexpected error fetching questions:', error);
     } finally {
       setLoading(false);
     }
-  };
-
-  const setFallbackQuestions = () => {
-    // ... keep existing code (fallback questions from frenchQuestions)
-    const fallbackQuestions = [
-      {
-        id: "1",
-        question: "Que signifie 'bonjour'?",
-        options: ["مساء الخير", "صباح الخير", "تصبح على خير", "مع السلامة"],
-        correct_answer: 1
-      },
-      {
-        id: "2",
-        question: "Comment dit-on 'merci' en arabe?",
-        options: ["شكراً", "عفواً", "آسف", "من فضلك"],
-        correct_answer: 0
-      }
-    ];
-    setQuestions(fallbackQuestions);
-  };
-
-  useEffect(() => {
-    if (!showInstructions && !quizCompleted && timeLeft > 0) {
-      const timer = setTimeout(() => setTimeLeft(timeLeft - 1), 1000);
-      return () => clearTimeout(timer);
-    } else if (timeLeft === 0 && !quizCompleted) {
-      handleNextQuestion();
-    }
-  }, [timeLeft, showInstructions, quizCompleted]);
-
-  const startQuiz = () => {
-    setShowInstructions(false);
-    setTimeLeft(30);
   };
 
   const handleAnswerSelect = (answerIndex: number) => {
@@ -98,129 +79,104 @@ const FrenchQuiz = () => {
   };
 
   const handleNextQuestion = () => {
-    const newAnswers = [...answers, selectedAnswer ?? -1];
-    setAnswers(newAnswers);
+    if (selectedAnswer === null) return;
+
+    const currentQ = questions[currentQuestion];
+    const isCorrect = selectedAnswer === currentQ.correct_answer;
     
+    // حفظ نتيجة السؤال
+    const result: QuizResult = {
+      questionIndex: currentQuestion,
+      selectedAnswer,
+      isCorrect,
+      question: currentQ.question,
+      correctAnswer: currentQ.options[currentQ.correct_answer],
+      selectedAnswerText: currentQ.options[selectedAnswer]
+    };
+    
+    setQuizResults(prev => [...prev, result]);
+
+    if (isCorrect) {
+      setScore(score + 1);
+    }
+
     if (currentQuestion < questions.length - 1) {
       setCurrentQuestion(currentQuestion + 1);
       setSelectedAnswer(null);
-      setTimeLeft(30);
     } else {
-      completeQuiz(newAnswers);
+      handleQuizComplete();
     }
   };
 
-  const completeQuiz = async (finalAnswers: number[]) => {
-    let correctCount = 0;
-    finalAnswers.forEach((answer, index) => {
-      if (answer === questions[index].correct_answer) {
-        correctCount++;
-      }
-    });
-    const finalScore = correctCount * 5;
-    setScore(correctCount);
+  const handleQuizComplete = async () => {
     setQuizCompleted(true);
+    
+    if (!user?.id) return;
 
-    if (user?.id) {
-      await saveQuizResult(finalAnswers, finalScore);
-    }
-  };
-
-  const saveQuizResult = async (finalAnswers: number[], finalScore: number) => {
-    if (!user?.id) {
-      console.log('No user ID available for saving quiz result');
-      return;
-    }
+    const pointsEarned = score * 10;
 
     try {
-      console.log('=== STARTING FRENCH QUIZ SAVE ===');
-
-      const { data: existingUser, error: userCheckError } = await supabase
+      // البحث عن المستخدم في قاعدة البيانات
+      const { data: userData, error: userError } = await supabase
         .from('users')
-        .select('id, telegram_id, quiz_points, total_points')
+        .select('id, quiz_points, total_points')
         .eq('telegram_id', user.id)
         .single();
 
-      if (userCheckError || !existingUser) {
-        console.error('User not found in database:', userCheckError);
+      if (userError || !userData) {
+        console.error('User not found:', userError);
         return;
       }
 
-      const { data: quizResult, error: quizError } = await supabase
+      // حفظ نتيجة الكويز
+      const { error: resultError } = await supabase
         .from('quiz_results')
         .insert({
-          user_id: existingUser.id,
+          user_id: userData.id,
           subject: 'french',
-          score: finalScore,
+          score: score,
           total_questions: questions.length,
-          points_earned: finalScore,
-          answers: finalAnswers,
-        })
-        .select()
-        .single();
+          points_earned: pointsEarned,
+          time_taken: 300 - timeLeft,
+          answers: quizResults
+        });
 
-      if (quizError) {
-        console.error('Error saving French quiz result:', quizError);
+      if (resultError) {
+        console.error('Error saving quiz result:', resultError);
         return;
       }
 
-      const newQuizPoints = (existingUser.quiz_points || 0) + finalScore;
-      const newTotalPoints = (existingUser.total_points || 0) + finalScore;
+      // تحديث نقاط المستخدم
+      const newQuizPoints = (userData.quiz_points || 0) + pointsEarned;
+      const newTotalPoints = (userData.total_points || 0) + pointsEarned;
 
-      const { data: updatedUser, error: updateError } = await supabase
+      const { error: updateError } = await supabase
         .from('users')
         .update({
           quiz_points: newQuizPoints,
-          total_points: newTotalPoints,
+          total_points: newTotalPoints
         })
-        .eq('telegram_id', user.id)
-        .select()
-        .single();
+        .eq('telegram_id', user.id);
 
       if (updateError) {
         console.error('Error updating user points:', updateError);
-      } else {
-        console.log('French quiz completed successfully!', updatedUser);
-        console.log('=== FRENCH QUIZ SAVE FINISHED ===');
       }
 
     } catch (error) {
-      console.error('Error saving French quiz result:', error);
+      console.error('Unexpected error completing quiz:', error);
     }
   };
 
-  const getWrongAnswers = () => {
-    return questions.map((question, index) => ({
-      question,
-      userAnswer: answers[index],
-      isCorrect: answers[index] === question.correct_answer,
-      correctAnswer: question.correct_answer
-    })).filter(item => !item.isCorrect);
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
   if (loading) {
     return (
       <div className="min-h-screen gradient-bg flex items-center justify-center">
-        <div className="text-white text-lg">جاري تحميل الأسئلة...</div>
-      </div>
-    );
-  }
-
-  if (showInstructions) {
-    return (
-      <div className="min-h-screen gradient-bg p-6 flex items-center justify-center">
-        <div className="glass rounded-2xl p-6 max-w-md w-full text-center">
-          <h1 className="text-2xl font-bold text-white mb-4">كويز اللغة الفرنسية</h1>
-          <div className="text-white/80 text-sm space-y-3 mb-6">
-            <p>سيتم طرح {questions.length} سؤال عليك</p>
-            <p>مدة كل سؤال 30 ثانية</p>
-            <p>كل إجابة صحيحة = 5 نقاط</p>
-            <p>إجمالي النقاط المحتملة: {questions.length * 5} نقطة</p>
-          </div>
-          <Button onClick={startQuiz} className="w-full bg-purple-600 hover:bg-purple-700 text-white">
-            ابدأ الكويز
-          </Button>
-        </div>
+        <div className="text-white text-lg">جاري التحميل...</div>
       </div>
     );
   }
@@ -229,99 +185,139 @@ const FrenchQuiz = () => {
     return (
       <div className="min-h-screen gradient-bg p-6">
         <div className="pt-8">
-          <div className="text-center mb-6">
-            <h1 className="text-2xl font-bold text-white mb-4">نتائج الكويز</h1>
-            <div className="glass rounded-2xl p-6 mb-4">
-              <div className="text-3xl font-bold text-white mb-2">{score}/{questions.length}</div>
-              <div className="text-white/80">النتيجة النهائية</div>
-              <div className="text-yellow-300 font-bold mt-2">{score * 5} نقطة</div>
+          <div className="flex items-center mb-6">
+            <Button
+              onClick={() => navigate(-1)}
+              variant="ghost"
+              size="icon"
+              className="text-white ml-2"
+            >
+              <ArrowRight className="w-5 h-5" />
+            </Button>
+            <h1 className="text-2xl font-bold text-white">نتيجة الكويز</h1>
+          </div>
+
+          <div className="glass rounded-2xl p-6 mb-6 text-center">
+            <div className="text-6xl mb-4">
+              {score >= questions.length * 0.8 ? '🎉' : score >= questions.length * 0.6 ? '👍' : '📚'}
+            </div>
+            <h2 className="text-2xl font-bold text-white mb-2">
+              {score >= questions.length * 0.8 ? 'ممتاز!' : score >= questions.length * 0.6 ? 'جيد!' : 'تحتاج للمراجعة'}
+            </h2>
+            <div className="text-lg text-white mb-2">
+              النتيجة: {score} من {questions.length}
+            </div>
+            <div className="text-lg text-white mb-4">
+              النقاط المكتسبة: {score * 10}
+            </div>
+            <div className="text-sm text-white/80">
+              الوقت المستغرق: {formatTime(300 - timeLeft)}
             </div>
           </div>
 
           {/* عرض الأخطاء */}
-          {getWrongAnswers().length > 0 && (
-            <div className="glass rounded-2xl p-4 mb-6">
-              <h3 className="font-bold text-white mb-4">الأخطاء ({getWrongAnswers().length}):</h3>
-              <div className="space-y-3 max-h-60 overflow-y-auto">
-                {getWrongAnswers().map((mistake, index) => (
-                  <div key={index} className="bg-red-500/20 rounded-xl p-3">
-                    <p className="text-white font-medium mb-2 text-sm">{mistake.question.question}</p>
-                    <p className="text-red-300 text-xs">
-                      إجابتك: {mistake.userAnswer >= 0 ? mistake.question.options[mistake.userAnswer] : 'لم تجب'}
-                    </p>
-                    <p className="text-green-300 text-xs">
-                      الإجابة الصحيحة: {mistake.question.options[mistake.correctAnswer]}
-                    </p>
+          <div className="glass rounded-2xl p-6 mb-6">
+            <h3 className="text-xl font-bold text-white mb-4">مراجعة الإجابات</h3>
+            <div className="space-y-4 max-h-96 overflow-y-auto">
+              {quizResults.map((result, index) => (
+                <div key={index} className={`p-4 rounded-lg ${result.isCorrect ? 'bg-green-500/20' : 'bg-red-500/20'}`}>
+                  <div className="flex items-start justify-between mb-2">
+                    <span className="text-white font-medium">السؤال {index + 1}</span>
+                    {result.isCorrect ? (
+                      <CheckCircle className="w-5 h-5 text-green-400" />
+                    ) : (
+                      <XCircle className="w-5 h-5 text-red-400" />
+                    )}
                   </div>
-                ))}
-              </div>
+                  <div className="text-white/90 text-sm mb-2">{result.question}</div>
+                  {!result.isCorrect && (
+                    <div className="space-y-1">
+                      <div className="text-red-300 text-sm">إجابتك: {result.selectedAnswerText}</div>
+                      <div className="text-green-300 text-sm">الإجابة الصحيحة: {result.correctAnswer}</div>
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
-          )}
+          </div>
 
           <Button
-            onClick={() => navigate('/quiz')}
-            className="w-full bg-white/20 hover:bg-white/30 text-white border-white/30"
-            variant="outline"
+            onClick={() => navigate('/subjects')}
+            className="w-full bg-purple-600 hover:bg-purple-700 text-white"
           >
-            العودة للكويزات
+            العودة للمواد
           </Button>
         </div>
       </div>
     );
   }
 
+  if (questions.length === 0) {
+    return (
+      <div className="min-h-screen gradient-bg flex items-center justify-center">
+        <div className="text-white text-lg">لا توجد أسئلة متاحة</div>
+      </div>
+    );
+  }
+
+  const currentQ = questions[currentQuestion];
+  const progress = ((currentQuestion + 1) / questions.length) * 100;
+
   return (
-    <div className="min-h-screen gradient-bg p-6 flex flex-col">
-      <div className="pt-8 flex-1 flex flex-col">
+    <div className="min-h-screen gradient-bg p-6">
+      <div className="pt-8">
         <div className="flex items-center justify-between mb-6">
-          <Button
-            onClick={() => navigate(-1)}
-            variant="ghost"
-            size="icon"
-            className="text-white"
-          >
-            <ArrowRight className="w-5 h-5" />
-          </Button>
+          <div className="flex items-center">
+            <Button
+              onClick={() => navigate(-1)}
+              variant="ghost"
+              size="icon"
+              className="text-white ml-2"
+            >
+              <ArrowRight className="w-5 h-5" />
+            </Button>
+            <h1 className="text-xl font-bold text-white">كويز اللغة الفرنسية</h1>
+          </div>
           <div className="flex items-center text-white">
             <Clock className="w-4 h-4 ml-1" />
-            <span className="font-bold">{timeLeft}s</span>
+            <span className="text-sm">{formatTime(timeLeft)}</span>
           </div>
         </div>
 
-        <div className="glass rounded-2xl p-6 flex-1 flex flex-col justify-center">
-          <div className="flex justify-between items-center mb-4">
-            <span className="text-white/80 text-sm">السؤال {currentQuestion + 1} من {questions.length}</span>
-            <div className="text-yellow-300 text-sm font-bold">5 نقاط</div>
+        <div className="mb-6">
+          <div className="flex justify-between text-white text-sm mb-2">
+            <span>السؤال {currentQuestion + 1} من {questions.length}</span>
+            <span>النقاط: {score * 10}</span>
           </div>
+          <Progress value={progress} className="h-2" />
+        </div>
 
-          <h2 className="text-xl font-bold text-white mb-6">
-            {questions[currentQuestion]?.question}
-          </h2>
-
-          <div className="space-y-3 mb-6">
-            {questions[currentQuestion]?.options.map((option, index) => (
+        <div className="glass rounded-2xl p-6 mb-6">
+          <h2 className="text-lg font-bold text-white mb-4">{currentQ.question}</h2>
+          <div className="space-y-3">
+            {currentQ.options.map((option, index) => (
               <button
                 key={index}
                 onClick={() => handleAnswerSelect(index)}
-                className={`w-full p-4 text-right rounded-xl transition-all ${
+                className={`w-full p-4 text-right rounded-xl border-2 transition-all ${
                   selectedAnswer === index
-                    ? 'bg-purple-600 text-white'
-                    : 'bg-white/10 text-white hover:bg-white/20'
+                    ? 'border-purple-400 bg-purple-500/20 text-white'
+                    : 'border-white/20 bg-white/5 text-white hover:border-white/40'
                 }`}
               >
                 {option}
               </button>
             ))}
           </div>
-
-          <Button
-            onClick={handleNextQuestion}
-            disabled={selectedAnswer === null}
-            className="w-full bg-purple-600 hover:bg-purple-700 text-white disabled:opacity-50"
-          >
-            {currentQuestion < questions.length - 1 ? 'السؤال التالي' : 'إنهاء الكويز'}
-          </Button>
         </div>
+
+        <Button
+          onClick={handleNextQuestion}
+          disabled={selectedAnswer === null}
+          className="w-full bg-purple-600 hover:bg-purple-700 text-white disabled:opacity-50"
+        >
+          {currentQuestion < questions.length - 1 ? 'السؤال التالي' : 'إنهاء الكويز'}
+        </Button>
       </div>
     </div>
   );

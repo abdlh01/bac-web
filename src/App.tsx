@@ -14,6 +14,7 @@ import Ranking from "./pages/Ranking";
 import Quiz from "./pages/Quiz";
 import Subjects from "./pages/Subjects";
 import Tasks from "./pages/Tasks";
+import Referrals from "./pages/Referrals";
 import EnglishQuiz from "./pages/EnglishQuiz";
 import FrenchQuiz from "./pages/FrenchQuiz";
 
@@ -65,6 +66,7 @@ const App = () => {
               <Route path="subjects" element={<Subjects />} />
             </Route>
             <Route path="/tasks" element={<Tasks />} />
+            <Route path="/referrals" element={<Referrals />} />
             <Route path="/quiz/english" element={<EnglishQuiz />} />
             <Route path="/quiz/french" element={<FrenchQuiz />} />
           </Routes>

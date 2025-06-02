@@ -1,7 +1,7 @@
 
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Trophy, Target, Brain, Clock } from "lucide-react";
+import { Trophy, Target, Brain, Clock, Users } from "lucide-react";
 import { useTelegramUser } from "@/hooks/useTelegramUser";
 import { useUserPoints } from "@/hooks/useUserPoints";
 import { useUserRanking } from "@/hooks/useUserRanking";
@@ -61,21 +61,26 @@ const Home = () => {
       </div>
 
       {/* إحصائيات النقاط */}
-      <div className="grid grid-cols-3 gap-3 mb-6">
+      <div className="grid grid-cols-4 gap-2 mb-6">
         <div className="glass rounded-xl p-3 text-center">
-          <Target className="w-6 h-6 text-white mx-auto mb-2" />
-          <div className="text-lg font-bold text-white">{points.task_points}</div>
-          <div className="text-white/80 text-xs">نقاط المهام</div>
+          <Target className="w-5 h-5 text-white mx-auto mb-1" />
+          <div className="text-sm font-bold text-white">{points.task_points}</div>
+          <div className="text-white/80 text-xs">مهام</div>
         </div>
         <div className="glass rounded-xl p-3 text-center">
-          <Brain className="w-6 h-6 text-white mx-auto mb-2" />
-          <div className="text-lg font-bold text-white">{points.quiz_points}</div>
-          <div className="text-white/80 text-xs">نقاط الكويز</div>
+          <Brain className="w-5 h-5 text-white mx-auto mb-1" />
+          <div className="text-sm font-bold text-white">{points.quiz_points}</div>
+          <div className="text-white/80 text-xs">كويز</div>
         </div>
         <div className="glass rounded-xl p-3 text-center">
-          <Clock className="w-6 h-6 text-white mx-auto mb-2" />
-          <div className="text-lg font-bold text-white">{points.counter_points}</div>
-          <div className="text-white/80 text-xs">نقاط العداد</div>
+          <Clock className="w-5 h-5 text-white mx-auto mb-1" />
+          <div className="text-sm font-bold text-white">{points.counter_points}</div>
+          <div className="text-white/80 text-xs">عداد</div>
+        </div>
+        <div className="glass rounded-xl p-3 text-center">
+          <Users className="w-5 h-5 text-white mx-auto mb-1" />
+          <div className="text-sm font-bold text-white">{points.referral_points}</div>
+          <div className="text-white/80 text-xs">إحالة</div>
         </div>
       </div>
 

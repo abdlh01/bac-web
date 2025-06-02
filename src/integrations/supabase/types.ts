@@ -156,6 +156,45 @@ export type Database = {
           },
         ]
       }
+      referrals: {
+        Row: {
+          created_at: string
+          id: string
+          points_awarded: number | null
+          referred_id: string
+          referrer_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          points_awarded?: number | null
+          referred_id: string
+          referrer_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          points_awarded?: number | null
+          referred_id?: string
+          referrer_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "referrals_referred_id_fkey"
+            columns: ["referred_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "referrals_referrer_id_fkey"
+            columns: ["referrer_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tasks: {
         Row: {
           channel_url: string
@@ -232,6 +271,9 @@ export type Database = {
           last_active: string | null
           last_name: string | null
           quiz_points: number | null
+          referral_code: string | null
+          referral_points: number | null
+          referred_by: string | null
           study_hours: number | null
           task_points: number | null
           telegram_id: number
@@ -248,6 +290,9 @@ export type Database = {
           last_active?: string | null
           last_name?: string | null
           quiz_points?: number | null
+          referral_code?: string | null
+          referral_points?: number | null
+          referred_by?: string | null
           study_hours?: number | null
           task_points?: number | null
           telegram_id: number
@@ -264,6 +309,9 @@ export type Database = {
           last_active?: string | null
           last_name?: string | null
           quiz_points?: number | null
+          referral_code?: string | null
+          referral_points?: number | null
+          referred_by?: string | null
           study_hours?: number | null
           task_points?: number | null
           telegram_id?: number
@@ -271,13 +319,25 @@ export type Database = {
           updated_at?: string | null
           username?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "users_referred_by_fkey"
+            columns: ["referred_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      generate_referral_code: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
       update_leaderboard: {
         Args: Record<PropertyKey, never>
         Returns: undefined

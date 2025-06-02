@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, ExternalLink } from "lucide-react";
+import { ArrowRight, ExternalLink, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTelegramUser } from "@/hooks/useTelegramUser";
 
@@ -65,10 +65,21 @@ const Tasks = () => {
     if (!user?.id) return;
 
     try {
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('id')
+        .eq('telegram_id', user.id)
+        .single();
+
+      if (userError || !userData) {
+        console.error('Error fetching user:', userError);
+        return;
+      }
+
       const { data, error } = await supabase
         .from('user_tasks')
         .select('task_id')
-        .eq('user_id', user.id.toString());
+        .eq('user_id', userData.id);
 
       if (error) {
         console.error('Error fetching completed tasks:', error);
@@ -185,6 +196,17 @@ const Tasks = () => {
             <ArrowRight className="w-5 h-5" />
           </Button>
           <h1 className="text-2xl font-bold text-white">المهام</h1>
+        </div>
+
+        {/* زر الإحالة */}
+        <div className="mb-6">
+          <Button
+            onClick={() => navigate('/referrals')}
+            className="w-full bg-green-600 hover:bg-green-700 text-white p-4 rounded-2xl"
+          >
+            <Users className="w-5 h-5 ml-2" />
+            <span>ادعُ أصدقاءك واربح 1000 نقطة لكل إحالة</span>
+          </Button>
         </div>
 
         <div className="space-y-4">
