@@ -17,6 +17,7 @@ const Ranking = () => {
   const { user } = useTelegramUser();
   const [rankings, setRankings] = useState<UserRank[]>([]);
   const [currentUserRank, setCurrentUserRank] = useState<UserRank | null>(null);
+  const [totalUsers, setTotalUsers] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -25,19 +26,25 @@ const Ranking = () => {
 
   const fetchRankings = async () => {
     try {
-      // جلب أفضل المستخدمين مرتبين حسب النقاط
+      // جلب أفضل 100 مستخدم مرتبين حسب النقاط
       const { data, error } = await supabase
         .from('users')
         .select('telegram_id, first_name, last_name, avatar_url, total_points')
         .order('total_points', { ascending: false })
-        .limit(20);
+        .limit(100);
 
       if (error) {
         console.error('Error fetching rankings:', error);
-        // استخدام بيانات وهمية في حالة الخطأ
         setDefaultRankings();
         return;
       }
+
+      // جلب إجمالي عدد المستخدمين
+      const { count } = await supabase
+        .from('users')
+        .select('*', { count: 'exact', head: true });
+      
+      setTotalUsers(count || 0);
 
       if (data && data.length > 0) {
         const rankedUsers = data.map((userData, index) => ({
@@ -56,18 +63,23 @@ const Ranking = () => {
           if (userRank) {
             setCurrentUserRank(userRank);
           } else {
-            // إذا لم يكن المستخدم في أول 20، نحتاج لحساب ترتيبه
-            const { count } = await supabase
+            // إذا لم يكن المستخدم في أول 100، نحتاج لحساب ترتيبه
+            const { data: allUsers } = await supabase
               .from('users')
-              .select('*', { count: 'exact', head: true })
-              .gt('total_points', 0);
-            
-            setCurrentUserRank({
-              rank: (count || 0) + 1,
-              name: `${user.first_name} ${user.last_name || ''}`.trim(),
-              points: 0,
-              avatar: user.photo_url
-            });
+              .select('telegram_id, total_points')
+              .order('total_points', { ascending: false });
+
+            if (allUsers) {
+              const userIndex = allUsers.findIndex(u => u.telegram_id === user.id);
+              if (userIndex !== -1) {
+                setCurrentUserRank({
+                  rank: userIndex + 1,
+                  name: `${user.first_name} ${user.last_name || ''}`.trim(),
+                  points: allUsers[userIndex].total_points || 0,
+                  avatar: user.photo_url
+                });
+              }
+            }
           }
         }
       } else {
@@ -87,15 +99,11 @@ const Ranking = () => {
       { rank: 2, name: "محمد علي", points: 2640, avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop&crop=face" },
       { rank: 3, name: "سارة حسن", points: 2420, avatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&h=100&fit=crop&crop=face" },
       { rank: 4, name: "أمير خالد", points: 2200, avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face" },
-      { rank: 5, name: "نور الدين", points: 2100, avatar: "https://images.unsplash.com/photo-1544723795-3fb6469f5b39?w=100&h=100&fit=crop&crop=face" },
-      { rank: 6, name: "ليلى مراد", points: 1980, avatar: "https://images.unsplash.com/photo-1489424731084-a5d8b219a5bb?w=100&h=100&fit=crop&crop=face" },
-      { rank: 7, name: "يوسف محمد", points: 1850, avatar: "https://images.unsplash.com/photo-1463453091185-61582044d556?w=100&h=100&fit=crop&crop=face" },
-      { rank: 8, name: "هدى سالم", points: 1720, avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop&crop=face" },
-      { rank: 9, name: "كريم أحمد", points: 1650, avatar: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=100&h=100&fit=crop&crop=face" },
-      { rank: 10, name: "زينب علي", points: 1580, avatar: "https://images.unsplash.com/photo-1517841905240-472988babdf9?w=100&h=100&fit=crop&crop=face" }
+      { rank: 5, name: "نور الدين", points: 2100, avatar: "https://images.unsplash.com/photo-1544723795-3fb6469f5b39?w=100&h=100&fit=crop&crop=face" }
     ];
     
     setRankings(defaultData);
+    setTotalUsers(150);
     
     if (user) {
       setCurrentUserRank({
@@ -115,8 +123,6 @@ const Ranking = () => {
     );
   }
 
-  const topTen = rankings.slice(0, 10);
-
   const getRankBadgeColor = (rank: number) => {
     if (rank === 1) return "bg-yellow-500";
     if (rank === 2) return "bg-gray-400";
@@ -126,13 +132,48 @@ const Ranking = () => {
 
   return (
     <div className="min-h-screen gradient-bg p-6 pt-12">
-      <h1 className="text-2xl font-bold text-white text-center mb-8">التصنيف</h1>
+      <h1 className="text-2xl font-bold text-white text-center mb-2">التصنيف</h1>
+      
+      {/* إجمالي عدد الأعضاء */}
+      <div className="text-center mb-6">
+        <div className="glass rounded-xl p-3 inline-block">
+          <span className="text-white/80 text-sm">إجمالي الأعضاء: </span>
+          <span className="text-white font-bold">{totalUsers}</span>
+        </div>
+      </div>
 
-      {/* العشرة الأوائل */}
-      <div className="glass rounded-2xl p-6 mb-6">
-        <h2 className="text-xl font-bold text-white mb-4 text-center">العشرة الأوائل</h2>
-        <div className="space-y-3">
-          {topTen.map((userRank) => (
+      {/* ترتيب المستخدم الحالي */}
+      {currentUserRank && (
+        <div className="glass rounded-2xl p-4 mb-6">
+          <h3 className="text-lg font-bold text-white mb-3 text-center">ترتيبك الحالي</h3>
+          <div className="flex items-center justify-between p-3 bg-blue-500/20 rounded-xl">
+            <div className="flex items-center space-x-3 rtl:space-x-reverse">
+              <Badge className="bg-blue-500 text-white font-bold w-8 h-8 rounded-full flex items-center justify-center">
+                {currentUserRank.rank}
+              </Badge>
+              <Avatar className="w-10 h-10">
+                <AvatarImage 
+                  src={currentUserRank.avatar || "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop&crop=face"} 
+                  alt={currentUserRank.name} 
+                />
+                <AvatarFallback className="bg-gray-500 text-white">
+                  {currentUserRank.name.charAt(0)}
+                </AvatarFallback>
+              </Avatar>
+              <div>
+                <div className="text-white font-bold">أنت ({currentUserRank.name})</div>
+                <div className="text-white/60 text-sm">{currentUserRank.points} نقطة</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* المائة الأوائل */}
+      <div className="glass rounded-2xl p-6">
+        <h2 className="text-xl font-bold text-white mb-4 text-center">المائة الأوائل</h2>
+        <div className="space-y-3 max-h-96 overflow-y-auto">
+          {rankings.map((userRank) => (
             <div key={userRank.rank} className="flex items-center justify-between p-3 bg-white/5 rounded-xl">
               <div className="flex items-center space-x-3 rtl:space-x-reverse">
                 <Badge className={`${getRankBadgeColor(userRank.rank)} text-white font-bold w-8 h-8 rounded-full flex items-center justify-center`}>
@@ -161,33 +202,6 @@ const Ranking = () => {
           ))}
         </div>
       </div>
-
-      {/* ترتيب المستخدم الحالي */}
-      {currentUserRank && currentUserRank.rank > 10 && (
-        <div className="glass rounded-2xl p-4">
-          <h3 className="text-lg font-bold text-white mb-3 text-center">ترتيبك الحالي</h3>
-          <div className="flex items-center justify-between p-3 bg-blue-500/20 rounded-xl">
-            <div className="flex items-center space-x-3 rtl:space-x-reverse">
-              <Badge className="bg-blue-500 text-white font-bold w-8 h-8 rounded-full flex items-center justify-center">
-                {currentUserRank.rank}
-              </Badge>
-              <Avatar className="w-10 h-10">
-                <AvatarImage 
-                  src={currentUserRank.avatar || "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop&crop=face"} 
-                  alt={currentUserRank.name} 
-                />
-                <AvatarFallback className="bg-gray-500 text-white">
-                  {currentUserRank.name.charAt(0)}
-                </AvatarFallback>
-              </Avatar>
-              <div>
-                <div className="text-white font-bold">أنت ({currentUserRank.name})</div>
-                <div className="text-white/60 text-sm">{currentUserRank.points} نقطة</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

@@ -1,7 +1,8 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, ExternalLink, Check } from "lucide-react";
+import { ArrowRight, ExternalLink } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTelegramUser } from "@/hooks/useTelegramUser";
 
@@ -150,7 +151,6 @@ const Tasks = () => {
       console.log('Points updated successfully!', updatedUser);
       console.log('=== TASK COMPLETION FINISHED ===');
       
-      // تحديث الواجهة بدون رسائل
       setCompletedTasks([...completedTasks, taskId]);
       
     } catch (error) {
@@ -188,31 +188,41 @@ const Tasks = () => {
         </div>
 
         <div className="space-y-4">
-          {tasks.map((task) => (
-            <div key={task.id} className="glass rounded-2xl p-4">
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex-1">
-                  <h3 className="font-bold text-white mb-1">{task.title}</h3>
-                  <p className="text-white/80 text-sm mb-2">{task.description}</p>
-                  <div className="flex items-center text-yellow-300 text-sm">
-                    <span className="ml-1">+{task.points}</span>
-                    <span>نقطة</span>
+          {tasks.map((task) => {
+            const isCompleted = completedTasks.includes(task.id);
+            return (
+              <div key={task.id} className="glass rounded-2xl p-4">
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex-1">
+                    <h3 className="font-bold text-white mb-1">{task.title}</h3>
+                    <p className="text-white/80 text-sm mb-2">{task.description}</p>
+                    <div className="flex items-center text-yellow-300 text-sm">
+                      <span className="ml-1">+{task.points}</span>
+                      <span>نقطة</span>
+                    </div>
                   </div>
+                  {isCompleted && (
+                    <div className="bg-green-500 p-2 rounded-full">
+                      <span className="text-white text-xs">✓</span>
+                    </div>
+                  )}
                 </div>
-                <div className="bg-green-500 p-2 rounded-full">
-                  <Check className="w-4 h-4 text-white" />
-                </div>
+                <Button
+                  onClick={() => openChannel(task.channel_url, task.id, task.points)}
+                  size="sm"
+                  className={`w-full ${
+                    isCompleted 
+                      ? 'bg-green-600 hover:bg-green-700' 
+                      : 'bg-purple-600 hover:bg-purple-700'
+                  } text-white`}
+                  disabled={isCompleted}
+                >
+                  <ExternalLink className="w-4 h-4 ml-1" />
+                  {isCompleted ? 'تم الإكمال' : 'انتقال'}
+                </Button>
               </div>
-              <Button
-                onClick={() => openChannel(task.channel_url, task.id, task.points)}
-                size="sm"
-                className="w-full bg-purple-600 hover:bg-purple-700 text-white"
-              >
-                <ExternalLink className="w-4 h-4 ml-1" />
-                انتقال
-              </Button>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         <div className="mt-8 glass rounded-2xl p-4 text-center">

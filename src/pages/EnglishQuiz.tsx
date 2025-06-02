@@ -36,7 +36,7 @@ const EnglishQuiz = () => {
         .select('*')
         .eq('subject', 'english')
         .eq('is_active', true)
-        .limit(10);
+        .limit(40);
 
       if (error) {
         console.error('Error fetching questions:', error);
@@ -45,7 +45,9 @@ const EnglishQuiz = () => {
       }
 
       if (data && data.length > 0) {
-        setQuestions(data);
+        // خلط الأسئلة عشوائياً واختيار 40 سؤال
+        const shuffled = data.sort(() => 0.5 - Math.random());
+        setQuestions(shuffled.slice(0, 40));
       } else {
         console.log('No questions found in database, using fallback data');
         setFallbackQuestions();
@@ -143,10 +145,7 @@ const EnglishQuiz = () => {
       console.log('=== STARTING ENGLISH QUIZ SAVE ===');
       console.log('User ID:', user.id);
       console.log('Final score:', finalScore);
-      console.log('Final answers:', finalAnswers);
 
-      // التحقق من وجود المستخدم في قاعدة البيانات
-      console.log('Checking if user exists in database...');
       const { data: existingUser, error: userCheckError } = await supabase
         .from('users')
         .select('id, telegram_id, quiz_points, total_points')
@@ -155,18 +154,13 @@ const EnglishQuiz = () => {
 
       if (userCheckError || !existingUser) {
         console.error('User not found in database:', userCheckError);
-        alert('خطأ: لم يتم العثور على المستخدم في قاعدة البيانات');
         return;
       }
 
-      console.log('User found in database:', existingUser);
-
-      // حفظ نتيجة الكويز - استخدام UUID بدلاً من string
-      console.log('Saving quiz result...');
       const { data: quizResult, error: quizError } = await supabase
         .from('quiz_results')
         .insert({
-          user_id: existingUser.id, // استخدام UUID من قاعدة البيانات
+          user_id: existingUser.id,
           subject: 'english',
           score: finalScore,
           total_questions: questions.length,
@@ -178,21 +172,11 @@ const EnglishQuiz = () => {
 
       if (quizError) {
         console.error('Error saving quiz result:', quizError);
-        alert('خطأ في حفظ نتيجة الكويز: ' + quizError.message);
         return;
       }
 
-      console.log('Quiz result saved successfully:', quizResult);
-
-      // تحديث نقاط المستخدم
       const newQuizPoints = (existingUser.quiz_points || 0) + finalScore;
       const newTotalPoints = (existingUser.total_points || 0) + finalScore;
-
-      console.log('Updating user points...');
-      console.log('Old quiz points:', existingUser.quiz_points);
-      console.log('New quiz points:', newQuizPoints);
-      console.log('Old total points:', existingUser.total_points);
-      console.log('New total points:', newTotalPoints);
 
       const { data: updatedUser, error: updateError } = await supabase
         .from('users')
@@ -206,17 +190,23 @@ const EnglishQuiz = () => {
 
       if (updateError) {
         console.error('Error updating user points:', updateError);
-        alert('خطأ في تحديث النقاط: ' + updateError.message);
       } else {
-        console.log('English quiz completed successfully! Updated user:', updatedUser);
+        console.log('English quiz completed successfully!', updatedUser);
         console.log('=== ENGLISH QUIZ SAVE FINISHED ===');
-        alert(`تم إكمال الكويز بنجاح! حصلت على ${finalScore} نقطة`);
       }
 
     } catch (error) {
       console.error('Error saving quiz result:', error);
-      alert('خطأ غير متوقع: ' + (error as Error).message);
     }
+  };
+
+  const getWrongAnswers = () => {
+    return questions.map((question, index) => ({
+      question,
+      userAnswer: answers[index],
+      isCorrect: answers[index] === question.correct_answer,
+      correctAnswer: question.correct_answer
+    })).filter(item => !item.isCorrect);
   };
 
   if (loading) {
@@ -242,7 +232,6 @@ const EnglishQuiz = () => {
 
   return (
     <div className="min-h-screen gradient-bg p-6">
-      {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <Button
           onClick={() => navigate('/quiz')}
@@ -260,7 +249,7 @@ const EnglishQuiz = () => {
           <div className="glass rounded-2xl p-6 mb-6">
             <h2 className="text-2xl font-bold text-white mb-4">استعد للكويز!</h2>
             <p className="text-white/80 mb-4">
-              سيتم سؤالك {questions.length} أسئلة حول اللغة الإنجليزية
+              سيتم سؤالك {questions.length} سؤال حول اللغة الإنجليزية
             </p>
             <p className="text-white/80 mb-4">
               لديك 30 ثانية لكل سؤال
@@ -288,18 +277,25 @@ const EnglishQuiz = () => {
             </p>
           </div>
 
-          <div className="space-y-2 mb-6">
-            {questions.map((question, index) => (
-              <div key={question.id} className="glass rounded-lg p-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-white text-sm">السؤال {index + 1}</span>
-                  <span className={`text-sm ${answers[index] === question.correct_answer ? 'text-green-400' : 'text-red-400'}`}>
-                    {answers[index] === question.correct_answer ? '✓ صحيح' : '✗ خطأ'}
-                  </span>
-                </div>
+          {/* عرض الأخطاء */}
+          {getWrongAnswers().length > 0 && (
+            <div className="glass rounded-2xl p-4 mb-6">
+              <h3 className="text-lg font-bold text-white mb-4">الأخطاء ({getWrongAnswers().length})</h3>
+              <div className="space-y-3 max-h-60 overflow-y-auto">
+                {getWrongAnswers().map((mistake, index) => (
+                  <div key={index} className="bg-red-500/20 rounded-xl p-3">
+                    <p className="text-white font-medium mb-2 text-sm">{mistake.question.question}</p>
+                    <p className="text-red-300 text-xs">
+                      إجابتك: {mistake.userAnswer >= 0 ? mistake.question.options[mistake.userAnswer] : 'لم تجب'}
+                    </p>
+                    <p className="text-green-300 text-xs">
+                      الإجابة الصحيحة: {mistake.question.options[mistake.correctAnswer]}
+                    </p>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+            </div>
+          )}
           
           <Button
             onClick={() => navigate('/quiz')}
@@ -310,7 +306,6 @@ const EnglishQuiz = () => {
         </div>
       ) : (
         <div className="max-w-md mx-auto">
-          {/* Timer and Progress */}
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center text-white">
               <Clock className="w-5 h-5 ml-2" />
@@ -321,7 +316,6 @@ const EnglishQuiz = () => {
             </div>
           </div>
 
-          {/* Progress Bar */}
           <div className="w-full bg-white/20 rounded-full h-2 mb-6">
             <div 
               className="bg-blue-500 h-2 rounded-full transition-all duration-300"
@@ -329,7 +323,6 @@ const EnglishQuiz = () => {
             ></div>
           </div>
 
-          {/* Question */}
           <div className="glass rounded-2xl p-6 mb-6">
             <h3 className="text-xl font-bold text-white mb-6 text-center">
               {questions[currentQuestion]?.question}
@@ -352,7 +345,6 @@ const EnglishQuiz = () => {
             </div>
           </div>
 
-          {/* Next Button */}
           <Button
             onClick={handleNextQuestion}
             disabled={selectedAnswer === null}
