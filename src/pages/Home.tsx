@@ -1,7 +1,7 @@
 
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Trophy, Target, Brain, Clock, Users, Share2 } from "lucide-react";
+import { Trophy, Target, Brain, Clock, Users, Share2, ExternalLink } from "lucide-react";
 import { useTelegramUser } from "@/hooks/useTelegramUser";
 import { useUserPoints } from "@/hooks/useUserPoints";
 import { useUserRanking } from "@/hooks/useUserRanking";
@@ -27,8 +27,43 @@ const Home = () => {
   const userName = user ? `${user.first_name} ${user.last_name || ''}`.trim() : "مستخدم";
   const userAvatar = user?.photo_url || "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face";
 
+  const handleStoreClick = () => {
+    window.open('https://askeladd-ship.onrender.com/', '_blank');
+  };
+
   return (
-    <div className="min-h-screen p-6 pt-12">
+    <div className="min-h-screen p-6 pt-6">
+      {/* إعلان المتجر الإلكتروني */}
+      <div 
+        className="glass rounded-3xl p-6 mb-8 cursor-pointer hover:scale-105 transition-transform duration-300 relative overflow-hidden"
+        onClick={handleStoreClick}
+      >
+        <div className="absolute inset-0 bg-gradient-to-r from-purple-600/20 to-blue-600/20 rounded-3xl"></div>
+        <div className="relative z-10 flex items-center justify-between">
+          <div className="flex items-center">
+            <div className="w-16 h-16 rounded-full bg-gradient-to-r from-purple-500 to-blue-500 flex items-center justify-center ml-4">
+              <img 
+                src="https://images.unsplash.com/photo-1531297484001-80022131f5a1?w=64&h=64&fit=crop" 
+                alt="متجر"
+                className="w-12 h-12 rounded-full object-cover"
+              />
+            </div>
+            <div>
+              <h3 className="text-white font-bold text-lg mb-1">زوروا متجرنا الإلكتروني</h3>
+              <p className="text-white/80 text-sm">اكتشف منتجاتنا المميزة والعروض الحصرية</p>
+            </div>
+          </div>
+          <div className="flex items-center text-white">
+            <ExternalLink className="w-6 h-6" />
+          </div>
+        </div>
+        <div className="absolute top-2 left-2">
+          <div className="bg-red-500 text-white text-xs px-2 py-1 rounded-full animate-pulse">
+            جديد
+          </div>
+        </div>
+      </div>
+
       {/* معلومات المستخدم */}
       <div className="text-center mb-8">
         <div className="relative inline-block mb-4">
