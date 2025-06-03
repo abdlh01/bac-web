@@ -1,3 +1,4 @@
+
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Trophy, Target, Brain, Clock, Users, Share2, ExternalLink } from "lucide-react";
@@ -101,21 +102,6 @@ const Home = () => {
           <div className="text-sm font-bold text-white">{points.referral_points}</div>
           <div className="text-white/80 text-xs">إحالة</div>
         </div>
-      </div>
-
-      {/* زر الإحالة */}
-      <div className="glass rounded-2xl p-4 mb-6">
-        <div className="flex items-center text-white mb-3">
-          <Share2 className="w-5 h-5 ml-2" />
-          <span className="font-medium">ادعُ أصدقاءك</span>
-        </div>
-        <p className="text-white/80 text-sm mb-4">احصل على 1000 نقطة لكل صديق تدعوه</p>
-        <Button
-          onClick={() => navigate('/referrals')}
-          className="w-full bg-green-600 hover:bg-green-700 text-white"
-        >
-          شارك واربح النقاط
-        </Button>
       </div>
 
       {/* المهام */}

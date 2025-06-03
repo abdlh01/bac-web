@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, ExternalLink, Users } from "lucide-react";
+import { ArrowRight, ExternalLink } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useTelegramUser } from "@/hooks/useTelegramUser";
 
@@ -170,9 +170,13 @@ const Tasks = () => {
   };
 
   const openChannel = (url: string, taskId: string, points: number) => {
-    console.log('Opening channel and completing task:', { url, taskId, points });
+    console.log('Opening channel:', { url, taskId, points });
     window.open(url, '_blank');
-    handleTaskComplete(taskId, points);
+    
+    // إذا لم تكن المهمة مكتملة، اكملها
+    if (!completedTasks.includes(taskId)) {
+      handleTaskComplete(taskId, points);
+    }
   };
 
   if (loading) {
@@ -196,17 +200,6 @@ const Tasks = () => {
             <ArrowRight className="w-5 h-5" />
           </Button>
           <h1 className="text-2xl font-bold text-white">المهام</h1>
-        </div>
-
-        {/* زر الإحالة */}
-        <div className="mb-6">
-          <Button
-            onClick={() => navigate('/referrals')}
-            className="w-full bg-green-600 hover:bg-green-700 text-white p-4 rounded-2xl"
-          >
-            <Users className="w-5 h-5 ml-2" />
-            <span>ادعُ أصدقاءك واربح 1000 نقطة لكل إحالة</span>
-          </Button>
         </div>
 
         <div className="space-y-4">
@@ -237,10 +230,9 @@ const Tasks = () => {
                       ? 'bg-green-600 hover:bg-green-700' 
                       : 'bg-purple-600 hover:bg-purple-700'
                   } text-white`}
-                  disabled={isCompleted}
                 >
                   <ExternalLink className="w-4 h-4 ml-1" />
-                  {isCompleted ? 'تم الإكمال' : 'انتقال'}
+                  {isCompleted ? 'زيارة مجدداً' : 'انتقال'}
                 </Button>
               </div>
             );
