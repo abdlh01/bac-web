@@ -14,6 +14,59 @@ const Counter = () => {
   const pointsIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const stopTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  // التحقق من وجود جلسة نشطة عند تحميل الصفحة
+  useEffect(() => {
+    if (user?.id) {
+      checkActiveSession();
+    }
+  }, [user?.id]);
+
+  const checkActiveSession = async () => {
+    if (!user?.id) return;
+
+    try {
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('id')
+        .eq('telegram_id', user.id)
+        .single();
+
+      if (userError || !userData) {
+        console.error('User not found:', userError);
+        return;
+      }
+
+      const { data: activeSession, error: sessionError } = await supabase
+        .from('counter_sessions')
+        .select('*')
+        .eq('user_id', userData.id)
+        .eq('is_active', true)
+        .order('start_time', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (sessionError) {
+        console.log('No active session found');
+        return;
+      }
+
+      if (activeSession) {
+        console.log('Found active session:', activeSession);
+        
+        // حساب الوقت المنقضي منذ بداية الجلسة
+        const startTime = new Date(activeSession.start_time).getTime();
+        const currentTime = new Date().getTime();
+        const elapsedSeconds = Math.floor((currentTime - startTime) / 1000);
+        
+        setSessionId(activeSession.id);
+        setTime(elapsedSeconds);
+        setIsRunning(true);
+      }
+    } catch (error) {
+      console.error('Error checking active session:', error);
+    }
+  };
+
   useEffect(() => {
     if (isRunning) {
       // عداد الوقت - كل ثانية
@@ -50,6 +103,10 @@ const Counter = () => {
   useEffect(() => {
     const handleBeforeUnload = () => {
       if (isRunning) {
+        // حفظ وقت المغادرة في localStorage
+        localStorage.setItem('counterExitTime', new Date().toISOString());
+        localStorage.setItem('counterSessionId', sessionId || '');
+        
         // إيقاف العداد بعد 5 دقائق (300 ثانية) من مغادرة الصفحة
         stopTimeoutRef.current = setTimeout(() => {
           handleStop();
@@ -62,6 +119,31 @@ const Counter = () => {
       if (stopTimeoutRef.current) {
         clearTimeout(stopTimeoutRef.current);
         stopTimeoutRef.current = null;
+      }
+
+      // التحقق من الوقت المنقضي أثناء الغياب
+      const exitTime = localStorage.getItem('counterExitTime');
+      const savedSessionId = localStorage.getItem('counterSessionId');
+      
+      if (exitTime && savedSessionId && isRunning && sessionId === savedSessionId) {
+        const exitTimestamp = new Date(exitTime).getTime();
+        const returnTimestamp = new Date().getTime();
+        const awayTime = Math.floor((returnTimestamp - exitTimestamp) / 1000);
+        
+        // إضافة الوقت المنقضي أثناء الغياب (حتى 5 دقائق كحد أقصى)
+        const maxAwayTime = 300; // 5 دقائق
+        const actualAwayTime = Math.min(awayTime, maxAwayTime);
+        
+        setTime(prevTime => prevTime + actualAwayTime);
+        
+        // تنظيف البيانات المحفوظة
+        localStorage.removeItem('counterExitTime');
+        localStorage.removeItem('counterSessionId');
+        
+        // إذا تجاوز الوقت 5 دقائق، أوقف العداد
+        if (awayTime >= maxAwayTime) {
+          handleStop();
+        }
       }
     };
 
@@ -76,7 +158,7 @@ const Counter = () => {
         clearTimeout(stopTimeoutRef.current);
       }
     };
-  }, [isRunning]);
+  }, [isRunning, sessionId]);
 
   const addPointsToUser = async () => {
     if (!user?.id) return;
@@ -201,6 +283,9 @@ const Counter = () => {
     } finally {
       setTime(0);
       setSessionId(null);
+      // تنظيف البيانات المحفوظة
+      localStorage.removeItem('counterExitTime');
+      localStorage.removeItem('counterSessionId');
       if (stopTimeoutRef.current) {
         clearTimeout(stopTimeoutRef.current);
         stopTimeoutRef.current = null;
