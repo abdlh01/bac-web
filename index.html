@@ -42,13 +42,64 @@
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       }
       
-      /* Hide Telegram bot name and integrate completely */
+      /* Hide ALL Telegram UI elements completely */
       .tgme_widget_message_user, 
       .tgme_widget_message_author,
       .tg_head_peer_title,
-      .tg_head_peer_status {
+      .tg_head_peer_status,
+      .tg_head_btn_back,
+      .tg_head_btn_menu,
+      .tgme_widget_message_bubble,
+      .tgme_widget_message_wrap,
+      .tgme_widget_message_text,
+      .tgme_widget_message_from_author,
+      .tgme_widget_message_forwarded_from,
+      .tgme_widget_message_via_bot,
+      .tg_head_split_title,
+      .tg_head_peer_title_wrap,
+      .tgico-premium_lock,
+      .tgico-lock_badge,
+      .tg_bot_username,
+      .tg_bot_description,
+      .tg-spoiler,
+      .tgme_widget_message_bubble_tail {
         display: none !important;
         visibility: hidden !important;
+        opacity: 0 !important;
+        height: 0 !important;
+        width: 0 !important;
+        position: absolute !important;
+        left: -9999px !important;
+      }
+      
+      /* Make close/minimize buttons very small and transparent */
+      .tg_head_btn_close,
+      .tg_head_btn_minimize,
+      .tg_head_close_btn,
+      .tg_head_minimize_btn {
+        width: 8px !important;
+        height: 8px !important;
+        opacity: 0.1 !important;
+        transform: scale(0.3) !important;
+        background: transparent !important;
+        border: none !important;
+        color: transparent !important;
+        font-size: 0 !important;
+        pointer-events: auto !important;
+      }
+      
+      /* Hide the entire header area */
+      .tg_head,
+      .tg_head_wrap,
+      .tgme_widget_message_header,
+      .tg_head_peer_wrap {
+        background: transparent !important;
+        border: none !important;
+        height: 0px !important;
+        min-height: 0px !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        opacity: 0 !important;
       }
       
       /* Ensure gradient background covers entire viewport */
@@ -56,6 +107,8 @@
         min-height: 100vh;
         min-height: 100dvh;
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding-top: 0 !important;
+        margin-top: 0 !important;
       }
       
       /* Hide scrollbars */
@@ -67,6 +120,16 @@
       html {
         scrollbar-width: none;
         -ms-overflow-style: none;
+      }
+
+      /* Force full screen integration */
+      .tgme_widget_message_wrap,
+      .tgme_widget_message {
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        margin: 0 !important;
+        padding: 0 !important;
       }
     </style>
   </head>
