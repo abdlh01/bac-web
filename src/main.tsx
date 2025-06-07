@@ -33,6 +33,8 @@ declare global {
         viewportStableHeight: number;
         headerColor: string;
         backgroundColor: string;
+        setHeaderColor: (color: string) => void;
+        setBackgroundColor: (color: string) => void;
       };
     };
   }
@@ -51,6 +53,10 @@ const initTelegramWebApp = () => {
     // تهيئة التطبيق
     window.Telegram.WebApp.ready();
     window.Telegram.WebApp.expand();
+    
+    // إزالة الشريط الأبيض وجعل التطبيق يتكامل مع تلغرام
+    window.Telegram.WebApp.setHeaderColor('#667eea');
+    window.Telegram.WebApp.setBackgroundColor('#667eea');
     
     // طباعة معلومات المستخدم إن وجدت
     if (window.Telegram.WebApp.initDataUnsafe?.user) {

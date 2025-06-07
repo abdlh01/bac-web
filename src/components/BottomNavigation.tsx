@@ -19,7 +19,7 @@ const BottomNavigation = () => {
   };
 
   return (
-    <div className="bottom-navigation fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-lg border-t border-white/20 px-4 py-2 z-50">
+    <div className="bottom-navigation fixed bottom-0 left-0 right-0 bg-white/10 backdrop-blur-lg border-t border-white/10 px-4 py-2 z-50">
       <div className="flex justify-around items-center max-w-md mx-auto">
         {navItems.map((item) => {
           const Icon = item.icon;
@@ -31,8 +31,8 @@ const BottomNavigation = () => {
               onClick={() => handleNavigation(item.path)}
               className={`flex flex-col items-center justify-center p-2 rounded-lg transition-all duration-200 ${
                 isActive 
-                  ? "text-purple-600 bg-purple-100/50 scale-105" 
-                  : "text-gray-600 hover:text-purple-500 hover:bg-purple-50/30"
+                  ? "text-white bg-white/20 scale-105" 
+                  : "text-white/70 hover:text-white hover:bg-white/10"
               }`}
               style={{
                 WebkitTouchCallout: 'none',

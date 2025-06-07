@@ -58,9 +58,17 @@ const Counter = () => {
         const currentTime = new Date().getTime();
         const elapsedSeconds = Math.floor((currentTime - startTime) / 1000);
         
-        setSessionId(activeSession.id);
-        setTime(elapsedSeconds);
-        setIsRunning(true);
+        // التحقق من أن الجلسة لم تتجاوز 5 دقائق من آخر نشاط
+        if (elapsedSeconds <= 300) { // 5 دقائق
+          setSessionId(activeSession.id);
+          setTime(elapsedSeconds);
+          setIsRunning(true);
+          console.log('Resuming active session with elapsed time:', elapsedSeconds);
+        } else {
+          // إنهاء الجلسة إذا تجاوزت 5 دقائق
+          console.log('Session expired, stopping it');
+          await handleStop();
+        }
       }
     } catch (error) {
       console.error('Error checking active session:', error);
@@ -99,66 +107,64 @@ const Counter = () => {
     };
   }, [isRunning]);
 
-  // التعامل مع مغادرة الصفحة فقط (وليس إخفاءها)
+  // التعامل مع مغادرة الصفحة
   useEffect(() => {
-    const handleBeforeUnload = () => {
-      if (isRunning) {
-        // حفظ وقت المغادرة في localStorage
+    const handleVisibilityChange = () => {
+      if (document.hidden && isRunning) {
+        // حفظ وقت المغادرة
         localStorage.setItem('counterExitTime', new Date().toISOString());
         localStorage.setItem('counterSessionId', sessionId || '');
+        localStorage.setItem('counterTime', time.toString());
         
-        // إيقاف العداد بعد 5 دقائق (300 ثانية) من مغادرة الصفحة
+        // إيقاف العداد بعد 5 دقائق
         stopTimeoutRef.current = setTimeout(() => {
           handleStop();
-        }, 300000);
-      }
-    };
+        }, 300000); // 5 دقائق
+      } else if (!document.hidden && isRunning) {
+        // إلغاء التوقف التلقائي عند العودة
+        if (stopTimeoutRef.current) {
+          clearTimeout(stopTimeoutRef.current);
+          stopTimeoutRef.current = null;
+        }
 
-    const handlePageShow = () => {
-      // إلغاء التوقف التلقائي عند العودة للصفحة
-      if (stopTimeoutRef.current) {
-        clearTimeout(stopTimeoutRef.current);
-        stopTimeoutRef.current = null;
-      }
-
-      // التحقق من الوقت المنقضي أثناء الغياب
-      const exitTime = localStorage.getItem('counterExitTime');
-      const savedSessionId = localStorage.getItem('counterSessionId');
-      
-      if (exitTime && savedSessionId && isRunning && sessionId === savedSessionId) {
-        const exitTimestamp = new Date(exitTime).getTime();
-        const returnTimestamp = new Date().getTime();
-        const awayTime = Math.floor((returnTimestamp - exitTimestamp) / 1000);
+        // التحقق من الوقت المنقضي
+        const exitTime = localStorage.getItem('counterExitTime');
+        const savedSessionId = localStorage.getItem('counterSessionId');
+        const savedTime = localStorage.getItem('counterTime');
         
-        // إضافة الوقت المنقضي أثناء الغياب (حتى 5 دقائق كحد أقصى)
-        const maxAwayTime = 300; // 5 دقائق
-        const actualAwayTime = Math.min(awayTime, maxAwayTime);
-        
-        setTime(prevTime => prevTime + actualAwayTime);
-        
-        // تنظيف البيانات المحفوظة
-        localStorage.removeItem('counterExitTime');
-        localStorage.removeItem('counterSessionId');
-        
-        // إذا تجاوز الوقت 5 دقائق، أوقف العداد
-        if (awayTime >= maxAwayTime) {
-          handleStop();
+        if (exitTime && savedSessionId && savedTime && sessionId === savedSessionId) {
+          const exitTimestamp = new Date(exitTime).getTime();
+          const returnTimestamp = new Date().getTime();
+          const awayTime = Math.floor((returnTimestamp - exitTimestamp) / 1000);
+          
+          // إضافة الوقت المنقضي (حتى 5 دقائق كحد أقصى)
+          const maxAwayTime = 300;
+          const actualAwayTime = Math.min(awayTime, maxAwayTime);
+          
+          setTime(parseInt(savedTime) + actualAwayTime);
+          
+          // تنظيف البيانات المحفوظة
+          localStorage.removeItem('counterExitTime');
+          localStorage.removeItem('counterSessionId');
+          localStorage.removeItem('counterTime');
+          
+          // إذا تجاوز الوقت 5 دقائق، أوقف العداد
+          if (awayTime >= maxAwayTime) {
+            handleStop();
+          }
         }
       }
     };
 
-    // استخدام beforeunload للتعامل مع مغادرة الصفحة فقط
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    window.addEventListener('pageshow', handlePageShow);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-      window.removeEventListener('pageshow', handlePageShow);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
       if (stopTimeoutRef.current) {
         clearTimeout(stopTimeoutRef.current);
       }
     };
-  }, [isRunning, sessionId]);
+  }, [isRunning, sessionId, time]);
 
   const addPointsToUser = async () => {
     if (!user?.id) return;
@@ -238,7 +244,7 @@ const Counter = () => {
     setIsRunning(false);
 
     try {
-      const finalPoints = Math.floor(time / 5); // نقطة كل 5 ثوانٍ
+      const finalPoints = Math.floor(time / 5);
       const hoursStudied = time / 3600;
 
       // تحديث الجلسة
@@ -286,6 +292,7 @@ const Counter = () => {
       // تنظيف البيانات المحفوظة
       localStorage.removeItem('counterExitTime');
       localStorage.removeItem('counterSessionId');
+      localStorage.removeItem('counterTime');
       if (stopTimeoutRef.current) {
         clearTimeout(stopTimeoutRef.current);
         stopTimeoutRef.current = null;
