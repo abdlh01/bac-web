@@ -35,6 +35,22 @@ declare global {
         backgroundColor: string;
         setHeaderColor: (color: string) => void;
         setBackgroundColor: (color: string) => void;
+        enableClosingConfirmation: () => void;
+        disableClosingConfirmation: () => void;
+        MainButton: {
+          text: string;
+          color: string;
+          textColor: string;
+          isVisible: boolean;
+          isActive: boolean;
+          show: () => void;
+          hide: () => void;
+        };
+        BackButton: {
+          isVisible: boolean;
+          show: () => void;
+          hide: () => void;
+        };
       };
     };
   }
@@ -48,19 +64,52 @@ const initTelegramWebApp = () => {
     console.log('Telegram WebApp detected!');
     console.log('WebApp version:', window.Telegram.WebApp.version);
     console.log('Platform:', window.Telegram.WebApp.platform);
-    console.log('Init data length:', window.Telegram.WebApp.initData?.length || 0);
+    
+    const tg = window.Telegram.WebApp;
     
     // تهيئة التطبيق
-    window.Telegram.WebApp.ready();
-    window.Telegram.WebApp.expand();
+    tg.ready();
+    tg.expand();
     
-    // إزالة الشريط الأبيض وجعل التطبيق يتكامل مع تلغرام
-    window.Telegram.WebApp.setHeaderColor('#667eea');
-    window.Telegram.WebApp.setBackgroundColor('#667eea');
+    // إخفاء أزرار تليجرام الافتراضية
+    tg.MainButton.hide();
+    tg.BackButton.hide();
+    
+    // تعطيل تأكيد الإغلاق
+    tg.disableClosingConfirmation();
+    
+    // التكامل الكامل مع تليجرام - إزالة الشريط الأبيض والتكامل الكامل
+    tg.setHeaderColor('#667eea');
+    tg.setBackgroundColor('#667eea');
+    
+    // إضافة ستايل لإخفاء عناصر واجهة تليجرام
+    const style = document.createElement('style');
+    style.textContent = `
+      .tgme_widget_message_user, 
+      .tgme_widget_message_author,
+      .tg_head_peer_title,
+      .tg_head_peer_status,
+      .tg_head_btn_back,
+      .tg_head_btn_menu {
+        display: none !important;
+        visibility: hidden !important;
+        opacity: 0 !important;
+      }
+      
+      /* Hide X button and minimize button */
+      .tg_head_btn_close,
+      .tg_head_btn_minimize {
+        width: 12px !important;
+        height: 12px !important;
+        opacity: 0.3 !important;
+        transform: scale(0.6) !important;
+      }
+    `;
+    document.head.appendChild(style);
     
     // طباعة معلومات المستخدم إن وجدت
-    if (window.Telegram.WebApp.initDataUnsafe?.user) {
-      console.log('User found in Telegram WebApp:', window.Telegram.WebApp.initDataUnsafe.user);
+    if (tg.initDataUnsafe?.user) {
+      console.log('User found in Telegram WebApp:', tg.initDataUnsafe.user);
     } else {
       console.log('No user data in Telegram WebApp');
     }
