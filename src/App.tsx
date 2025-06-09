@@ -17,6 +17,8 @@ import Tasks from "./pages/Tasks";
 import Referrals from "./pages/Referrals";
 import EnglishQuiz from "./pages/EnglishQuiz";
 import FrenchQuiz from "./pages/FrenchQuiz";
+import EnglishQuizSections from "./pages/EnglishQuizSections";
+import EnglishQuizSection from "./pages/EnglishQuizSection";
 
 const queryClient = new QueryClient();
 
@@ -67,7 +69,8 @@ const App = () => {
             </Route>
             <Route path="/tasks" element={<Tasks />} />
             <Route path="/referrals" element={<Referrals />} />
-            <Route path="/quiz/english" element={<EnglishQuiz />} />
+            <Route path="/quiz/english" element={<EnglishQuizSections />} />
+            <Route path="/quiz/english/section/:sectionNumber" element={<EnglishQuizSection />} />
             <Route path="/quiz/french" element={<FrenchQuiz />} />
           </Routes>
         </BrowserRouter>

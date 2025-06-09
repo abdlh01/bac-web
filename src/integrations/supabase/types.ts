@@ -88,6 +88,7 @@ export type Database = {
           is_active: boolean | null
           options: string[]
           question: string
+          section_number: number | null
           subject: string
         }
         Insert: {
@@ -98,6 +99,7 @@ export type Database = {
           is_active?: boolean | null
           options: string[]
           question: string
+          section_number?: number | null
           subject: string
         }
         Update: {
@@ -108,6 +110,7 @@ export type Database = {
           is_active?: boolean | null
           options?: string[]
           question?: string
+          section_number?: number | null
           subject?: string
         }
         Relationships: []
@@ -155,6 +158,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      quiz_sections: {
+        Row: {
+          created_at: string
+          id: string
+          is_unlocked: boolean
+          section_number: number
+          subject: string
+          total_questions: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_unlocked?: boolean
+          section_number: number
+          subject: string
+          total_questions?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_unlocked?: boolean
+          section_number?: number
+          subject?: string
+          total_questions?: number
+        }
+        Relationships: []
       }
       referrals: {
         Row: {
@@ -224,6 +254,86 @@ export type Database = {
           title?: string
         }
         Relationships: []
+      }
+      user_answered_questions: {
+        Row: {
+          answered_at: string
+          id: string
+          is_correct: boolean
+          question_id: string
+          user_id: string
+        }
+        Insert: {
+          answered_at?: string
+          id?: string
+          is_correct: boolean
+          question_id: string
+          user_id: string
+        }
+        Update: {
+          answered_at?: string
+          id?: string
+          is_correct?: boolean
+          question_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_answered_questions_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "quiz_questions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_answered_questions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_quiz_progress: {
+        Row: {
+          completed_questions: number
+          created_at: string
+          id: string
+          is_completed: boolean
+          section_number: number
+          subject: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          completed_questions?: number
+          created_at?: string
+          id?: string
+          is_completed?: boolean
+          section_number: number
+          subject: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          completed_questions?: number
+          created_at?: string
+          id?: string
+          is_completed?: boolean
+          section_number?: number
+          subject?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_quiz_progress_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_tasks: {
         Row: {

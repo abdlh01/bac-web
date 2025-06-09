@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { BookOpen, Calculator, Atom, Globe, History, Languages, Palette, Music, Dumbbell, Briefcase } from "lucide-react";
 
-const Subjects = () => {
+const Quiz = () => {
   const navigate = useNavigate();
 
   const subjects = [
@@ -17,7 +17,6 @@ const Subjects = () => {
     { name: "اللغة الفرنسية", icon: Languages, color: "bg-pink-600", available: true, path: "/quiz/french" },
     { name: "الشريعة", icon: BookOpen, color: "bg-teal-600", available: false },
     { name: "الفلسفة", icon: BookOpen, color: "bg-violet-600", available: false },
-    
   ];
 
   return (
@@ -63,9 +62,9 @@ const Subjects = () => {
       <div className="glass rounded-2xl p-6 text-center">
         <h3 className="text-lg font-bold text-white mb-2">المواد المتاحة حالياً</h3>
         <div className="text-white/80 text-sm space-y-1">
-          <p>• اللغة الإنجليزية - 40 سؤال متاح</p>
+          <p>• اللغة الإنجليزية - 26 قسم × 15 سؤال (390 سؤال)</p>
           <p>• اللغة الفرنسية - 40 سؤال متاح</p>
-          <p>• باقي المواد قيد التطوير</p>
+          <p>• نظام الأقسام: يجب إكمال كل قسم لفتح التالي</p>
           <p className="text-green-400 font-medium mt-3">سيتم إضافة باقي المواد قريباً!</p>
         </div>
       </div>
@@ -73,4 +72,4 @@ const Subjects = () => {
   );
 };
 
-export default Subjects;
+export default Quiz;
