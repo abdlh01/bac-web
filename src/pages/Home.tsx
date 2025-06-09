@@ -8,6 +8,7 @@ import { useTelegramUser } from "@/hooks/useTelegramUser";
 import { useUserPoints } from "@/hooks/useUserPoints";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
 const Home = () => {
   const navigate = useNavigate();
@@ -38,7 +39,6 @@ const Home = () => {
           title: "تم حذف الملف الشخصي",
           description: "تم حذف ملفك الشخصي وجميع بياناتك بنجاح",
         });
-        // يمكن إضافة إعادة توجيه أو إعادة تحميل الصفحة هنا
         window.location.reload();
       }
     } catch (error) {
@@ -58,7 +58,7 @@ const Home = () => {
       icon: Users,
       label: "الإحالة",
       color: "bg-pink-600",
-      disabled: true, // صفحة الإحالة غير متاحة حالياً
+      disabled: true,
     },
     {
       icon: Timer,
@@ -83,8 +83,19 @@ const Home = () => {
   return (
     <div className="min-h-screen p-6 pt-12">
       <div className="max-w-md mx-auto space-y-6">
-        {/* Welcome Section */}
+        {/* Profile Section */}
         <div className="text-center mb-8">
+          <div className="flex justify-center mb-4">
+            <Avatar className="w-20 h-20">
+              <AvatarImage 
+                src={user?.photo_url} 
+                alt={user?.first_name || "المستخدم"}
+              />
+              <AvatarFallback className="text-2xl bg-purple-600 text-white">
+                {user?.first_name?.[0] || "م"}
+              </AvatarFallback>
+            </Avatar>
+          </div>
           <h1 className="text-3xl font-bold text-white mb-2">
             أهلاً بك في ساحة البكالوريا
           </h1>
@@ -101,15 +112,15 @@ const Home = () => {
           <div className="text-white/80 text-sm">إجمالي النقاط</div>
           
           <div className="grid grid-cols-3 gap-4 mt-4">
-            <div className="text-center">
+            <div className="text-center bg-white/10 rounded-lg p-3">
               <div className="text-lg font-bold text-white">{points.task_points}</div>
               <div className="text-white/60 text-xs">المهام</div>
             </div>
-            <div className="text-center">
+            <div className="text-center bg-white/10 rounded-lg p-3">
               <div className="text-lg font-bold text-white">{points.quiz_points}</div>
               <div className="text-white/60 text-xs">الكويز</div>
             </div>
-            <div className="text-center">
+            <div className="text-center bg-white/10 rounded-lg p-3">
               <div className="text-lg font-bold text-white">{points.counter_points}</div>
               <div className="text-white/60 text-xs">العداد</div>
             </div>
