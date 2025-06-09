@@ -22,13 +22,48 @@ const Home = () => {
     
     setDeleting(true);
     try {
+      // أولاً، جلب معرف المستخدم الداخلي
+      const { data: userData, error: userFetchError } = await supabase
+        .from('users')
+        .select('id')
+        .eq('telegram_id', user.id)
+        .single();
+
+      if (userFetchError || !userData) {
+        console.error('Error fetching user:', userFetchError);
+        toast({
+          title: "خطأ في حذف الملف الشخصي",
+          description: "لم يتم العثور على المستخدم",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // حذف جميع البيانات المرتبطة بالمستخدم
+      const deleteOperations = [
+        supabase.from('user_answered_questions').delete().eq('user_id', userData.id),
+        supabase.from('user_quiz_progress').delete().eq('user_id', userData.id),
+        supabase.from('quiz_results').delete().eq('user_id', userData.id),
+        supabase.from('counter_sessions').delete().eq('user_id', userData.id),
+        supabase.from('user_tasks').delete().eq('user_id', userData.id),
+        supabase.from('referrals').delete().eq('referrer_id', userData.id),
+        supabase.from('referrals').delete().eq('referred_id', userData.id),
+        supabase.from('leaderboard').delete().eq('user_id', userData.id),
+      ];
+
+      // تنفيذ جميع عمليات الحذف
+      for (const operation of deleteOperations) {
+        await operation;
+      }
+
+      // أخيراً، حذف المستخدم نفسه
       const { error } = await supabase
         .from('users')
         .delete()
         .eq('telegram_id', user.id);
 
       if (error) {
-        console.error('Error deleting profile:', error);
+        console.error('Error deleting user:', error);
         toast({
           title: "خطأ في حذف الملف الشخصي",
           description: "حدث خطأ أثناء حذف الملف الشخصي",
@@ -39,6 +74,9 @@ const Home = () => {
           title: "تم حذف الملف الشخصي",
           description: "تم حذف ملفك الشخصي وجميع بياناتك بنجاح",
         });
+        // مسح البيانات المحلية أيضاً
+        localStorage.clear();
+        sessionStorage.clear();
         window.location.reload();
       }
     } catch (error) {
@@ -80,6 +118,9 @@ const Home = () => {
     },
   ];
 
+  // تكوين الاسم الكامل
+  const fullName = user ? `${user.first_name || ''} ${user.last_name || ''}`.trim() : 'المستخدم';
+
   return (
     <div className="min-h-screen p-6 pt-12">
       <div className="max-w-md mx-auto space-y-6">
@@ -89,19 +130,16 @@ const Home = () => {
             <Avatar className="w-20 h-20">
               <AvatarImage 
                 src={user?.photo_url} 
-                alt={user?.first_name || "المستخدم"}
+                alt={fullName}
               />
               <AvatarFallback className="text-2xl bg-purple-600 text-white">
                 {user?.first_name?.[0] || "م"}
               </AvatarFallback>
             </Avatar>
           </div>
-          <h1 className="text-3xl font-bold text-white mb-2">
-            أهلاً بك في ساحة البكالوريا
+          <h1 className="text-2xl font-bold text-white mb-2">
+            {fullName}
           </h1>
-          <p className="text-white/80">
-            مرحباً {user?.first_name || 'صديقي'} 👋
-          </p>
         </div>
 
         {/* Points Summary */}

@@ -44,18 +44,20 @@ const EnglishQuizSection = () => {
   }, [user, sectionNumber]);
 
   useEffect(() => {
-    if (timeLeft > 0 && !quizCompleted) {
+    if (timeLeft > 0 && !quizCompleted && questions.length > 0) {
       const timer = setTimeout(() => setTimeLeft(timeLeft - 1), 1000);
       return () => clearTimeout(timer);
-    } else if (timeLeft === 0) {
+    } else if (timeLeft === 0 && questions.length > 0) {
       handleQuizComplete();
     }
-  }, [timeLeft, quizCompleted]);
+  }, [timeLeft, quizCompleted, questions.length]);
 
   const initializeQuiz = async () => {
     if (!user?.id || !sectionNumber) return;
 
     try {
+      console.log('Initializing quiz for section:', sectionNumber);
+      
       // البحث عن المستخدم في قاعدة البيانات
       const { data: userData, error: userError } = await supabase
         .from('users')
@@ -70,8 +72,9 @@ const EnglishQuizSection = () => {
       }
 
       setUserId(userData.id);
+      console.log('User found:', userData.id);
 
-      // جلب الأسئلة المجابة بشكل صحيح
+      // جلب الأسئلة المجابة بشكل صحيح لهذا القسم
       const { data: answeredQuestions, error: answeredError } = await supabase
         .from('user_answered_questions')
         .select('question_id')
@@ -83,15 +86,22 @@ const EnglishQuizSection = () => {
       }
 
       const answeredQuestionIds = answeredQuestions?.map(q => q.question_id) || [];
+      console.log('Answered question IDs:', answeredQuestionIds);
 
-      // جلب الأسئلة من القسم المحدد واستبعاد المجاب عليها بشكل صحيح
-      const { data: questionsData, error: questionsError } = await supabase
+      // جلب جميع الأسئلة من القسم المحدد
+      let questionsQuery = supabase
         .from('quiz_questions')
         .select('*')
         .eq('subject', 'english')
         .eq('section_number', parseInt(sectionNumber))
-        .eq('is_active', true)
-        .not('id', 'in', `(${answeredQuestionIds.length > 0 ? answeredQuestionIds.join(',') : 'null'})`);
+        .eq('is_active', true);
+
+      // استبعاد الأسئلة المجابة بشكل صحيح إذا كان هناك أي منها
+      if (answeredQuestionIds.length > 0) {
+        questionsQuery = questionsQuery.not('id', 'in', `(${answeredQuestionIds.join(',')})`);
+      }
+
+      const { data: questionsData, error: questionsError } = await questionsQuery;
 
       if (questionsError) {
         console.error('Error fetching questions:', questionsError);
@@ -99,8 +109,11 @@ const EnglishQuizSection = () => {
         return;
       }
 
+      console.log('Questions fetched:', questionsData?.length || 0);
+
       if (!questionsData || questionsData.length === 0) {
         // إذا لم تعد هناك أسئلة، فهذا يعني أن القسم مكتمل
+        console.log('No questions left, section completed');
         setQuizCompleted(true);
         setLoading(false);
         return;
@@ -109,6 +122,7 @@ const EnglishQuizSection = () => {
       // خلط الأسئلة
       const shuffled = [...questionsData].sort(() => Math.random() - 0.5);
       setQuestions(shuffled);
+      console.log('Questions set:', shuffled.length);
       setLoading(false);
     } catch (error) {
       console.error('Unexpected error initializing quiz:', error);
