@@ -186,7 +186,6 @@ const EnglishQuizSection = () => {
 
     try {
       // تحديث تقدم المستخدم في القسم
-      const correctAnswers = quizResults.filter(r => r.isCorrect).length + (selectedAnswer !== null && selectedAnswer === questions[currentQuestion]?.correct_answer ? 1 : 0);
       
       // الحصول على العدد الإجمالي للأسئلة في هذا القسم
       const { data: allQuestionsData } = await supabase
@@ -198,42 +197,32 @@ const EnglishQuizSection = () => {
 
       const totalQuestions = allQuestionsData?.length || 15;
       
-      // حساب الأسئلة المجابة بشكل صحيح من قبل
-      const { data: previousCorrectAnswers } = await supabase
+      // حساب جميع الأسئلة المجابة بشكل صحيح في هذا القسم
+      const { data: correctAnswers } = await supabase
         .from('user_answered_questions')
-        .select('question_id')
+        .select(`
+          question_id,
+          quiz_questions!inner(section_number)
+        `)
         .eq('user_id', userId)
-        .eq('is_correct', true);
+        .eq('is_correct', true)
+        .eq('quiz_questions.subject', 'english')
+        .eq('quiz_questions.section_number', parseInt(sectionNumber));
 
-      const previousCorrectIds = previousCorrectAnswers?.map(q => q.question_id) || [];
+      const correctAnswersCount = correctAnswers?.length || 0;
+      console.log('Correct answers count:', correctAnswersCount, 'Total questions:', totalQuestions);
       
-      // حساب الأسئلة المجابة بشكل صحيح من هذا القسم
-      const { data: sectionQuestions } = await supabase
-        .from('quiz_questions')
-        .select('id')
-        .eq('subject', 'english')
-        .eq('section_number', parseInt(sectionNumber))
-        .eq('is_active', true);
+      const isCompleted = correctAnswersCount >= totalQuestions;
+      console.log('Section completed:', isCompleted);
 
-      const sectionQuestionIds = sectionQuestions?.map(q => q.id) || [];
-      const correctFromThisSection = previousCorrectIds.filter(id => sectionQuestionIds.includes(id));
-      
-      // إضافة الأسئلة الصحيحة من الجلسة الحالية
-      const currentSessionCorrect = quizResults.filter(r => r.isCorrect).length;
-      if (selectedAnswer !== null && selectedAnswer === questions[currentQuestion]?.correct_answer) {
-        currentSessionCorrect + 1;
-      }
-      
-      const totalCorrectInSection = correctFromThisSection.length + currentSessionCorrect;
-      const isCompleted = totalCorrectInSection >= totalQuestions;
-
+      // تحديث أو إنشاء تقدم المستخدم
       await supabase
         .from('user_quiz_progress')
         .upsert({
           user_id: userId,
           subject: 'english',
           section_number: parseInt(sectionNumber),
-          completed_questions: totalCorrectInSection,
+          completed_questions: correctAnswersCount,
           is_completed: isCompleted
         });
 
@@ -318,11 +307,9 @@ const EnglishQuizSection = () => {
             <div className="text-lg text-white mb-4">
               النقاط المكتسبة: {score * 10}
             </div>
-            {score === questions.length && (
-              <div className="text-green-400 font-bold">
-                🔓 تم فتح القسم التالي!
-              </div>
-            )}
+            <div className="text-green-400 font-bold">
+              🔓 تم إكمال القسم وفتح القسم التالي!
+            </div>
           </div>
 
           <Button
