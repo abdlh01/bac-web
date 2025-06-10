@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useNavigate } from "react-router-dom";
-import { Users, Timer, BookOpen, ListTodo, Star, Trophy, Award } from "lucide-react";
+import { Users, Timer, BookOpen, ListTodo, Star, Trophy, Award, Clock } from "lucide-react";
 import { useTelegramUser } from "@/hooks/useTelegramUser";
 import { useUserPoints } from "@/hooks/useUserPoints";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -47,8 +47,25 @@ const Home = () => {
   // تكوين الاسم الكامل
   const fullName = user ? `${user.first_name || ''} ${user.last_name || ''}`.trim() : 'المستخدم';
 
+  // تحويل الساعات إلى تنسيق HH:MM:SS مع الأيام
+  const formatStudyTime = (hours: number) => {
+    const totalSeconds = Math.floor(hours * 3600);
+    const days = Math.floor(totalSeconds / 86400);
+    const remainingSeconds = totalSeconds % 86400;
+    const hrs = Math.floor(remainingSeconds / 3600);
+    const mins = Math.floor((remainingSeconds % 3600) / 60);
+    const secs = remainingSeconds % 60;
+    
+    const timeString = `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    const daysString = `${days.toString().padStart(2, '0')}d`;
+    
+    return { timeString, daysString };
+  };
+
+  const { timeString, daysString } = formatStudyTime(points.study_hours);
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900 p-6">
       <div className="max-w-md mx-auto space-y-6 pt-8">
         {/* Profile Section */}
         <div className="text-center mb-8">
@@ -68,50 +85,57 @@ const Home = () => {
               </div>
             </div>
           </div>
-          <h1 className="text-2xl font-bold text-white mb-2 bg-gradient-to-r from-white to-purple-200 bg-clip-text text-transparent">
+          <h1 className="text-2xl font-bold text-white mb-2 bg-gradient-to-r from-white to-blue-200 bg-clip-text text-transparent">
             {fullName}
           </h1>
-          <p className="text-purple-200 text-sm">طالب بكالوريا متميز</p>
+          <p className="text-blue-200 text-sm">طالب بكالوريا متميز</p>
         </div>
 
-        {/* Points Summary */}
-        <div className="bg-white/10 backdrop-blur-lg rounded-3xl p-6 text-center border border-white/20 shadow-2xl">
-          <div className="flex items-center justify-center mb-3">
-            <Trophy className="w-8 h-8 text-yellow-400 mr-2" />
-            <h2 className="text-lg font-semibold text-white">إجمالي النقاط</h2>
+        {/* Total Points - Main Section */}
+        <div className="bg-white/10 backdrop-blur-lg rounded-3xl p-8 text-center border border-white/20 shadow-2xl">
+          <div className="flex items-center justify-center mb-4">
+            <Trophy className="w-8 h-8 text-yellow-400 mr-3" />
+            <h2 className="text-xl font-semibold text-white">إجمالي النقاط</h2>
           </div>
-          <div className="text-5xl font-bold text-white mb-4 bg-gradient-to-r from-yellow-400 to-orange-400 bg-clip-text text-transparent">
+          <div className="text-6xl font-bold text-white mb-6 bg-gradient-to-r from-yellow-400 to-orange-400 bg-clip-text text-transparent">
             {loading ? "..." : points.total_points.toLocaleString()}
           </div>
           
-          <div className="grid grid-cols-2 gap-3">
-            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4 border border-white/10">
-              <div className="flex items-center justify-center mb-2">
-                <ListTodo className="w-5 h-5 text-green-400 mr-1" />
-              </div>
-              <div className="text-2xl font-bold text-white">{points.task_points}</div>
-              <div className="text-white/70 text-sm">المهام</div>
+          {/* Points Breakdown - Small Format */}
+          <div className="grid grid-cols-4 gap-2 mb-6">
+            <div className="bg-white/5 backdrop-blur-sm rounded-xl p-3 border border-white/10">
+              <ListTodo className="w-4 h-4 text-green-400 mx-auto mb-1" />
+              <div className="text-lg font-bold text-white">{points.task_points}</div>
+              <div className="text-white/60 text-xs">المهام</div>
             </div>
-            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4 border border-white/10">
-              <div className="flex items-center justify-center mb-2">
-                <BookOpen className="w-5 h-5 text-purple-400 mr-1" />
-              </div>
-              <div className="text-2xl font-bold text-white">{points.quiz_points}</div>
-              <div className="text-white/70 text-sm">الكويز</div>
+            <div className="bg-white/5 backdrop-blur-sm rounded-xl p-3 border border-white/10">
+              <BookOpen className="w-4 h-4 text-purple-400 mx-auto mb-1" />
+              <div className="text-lg font-bold text-white">{points.quiz_points}</div>
+              <div className="text-white/60 text-xs">الكويز</div>
             </div>
-            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4 border border-white/10">
-              <div className="flex items-center justify-center mb-2">
-                <Timer className="w-5 h-5 text-blue-400 mr-1" />
-              </div>
-              <div className="text-2xl font-bold text-white">{points.counter_points}</div>
-              <div className="text-white/70 text-sm">العداد</div>
+            <div className="bg-white/5 backdrop-blur-sm rounded-xl p-3 border border-white/10">
+              <Timer className="w-4 h-4 text-blue-400 mx-auto mb-1" />
+              <div className="text-lg font-bold text-white">{points.counter_points}</div>
+              <div className="text-white/60 text-xs">العداد</div>
             </div>
-            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-4 border border-white/10">
-              <div className="flex items-center justify-center mb-2">
-                <Award className="w-5 h-5 text-yellow-400 mr-1" />
-              </div>
-              <div className="text-2xl font-bold text-white">{points.study_hours.toFixed(1)}</div>
-              <div className="text-white/70 text-sm">ساعات</div>
+            <div className="bg-white/5 backdrop-blur-sm rounded-xl p-3 border border-white/10">
+              <Users className="w-4 h-4 text-pink-400 mx-auto mb-1" />
+              <div className="text-lg font-bold text-white">{points.referral_points}</div>
+              <div className="text-white/60 text-xs">الإحالة</div>
+            </div>
+          </div>
+
+          {/* Study Time Summary */}
+          <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-4 border border-white/10">
+            <h3 className="text-md font-bold text-white mb-3 flex items-center justify-center">
+              <Clock className="w-5 h-5 mr-2 text-blue-400" />
+              مجموع الوقت الذي درسته
+            </h3>
+            <div className="text-3xl font-bold text-blue-400 mb-2">
+              {timeString}
+            </div>
+            <div className="text-white/70 text-lg">
+              {daysString}
             </div>
           </div>
         </div>
@@ -119,7 +143,7 @@ const Home = () => {
         {/* Quick Actions Section */}
         <div className="space-y-4">
           <h2 className="text-xl font-bold text-white text-center mb-6">
-            🎯 يمكنك جمع النقاط من خلال
+            يمكنك جمع النقاط من خلال
           </h2>
           
           <div className="grid grid-cols-2 gap-4">
@@ -145,20 +169,6 @@ const Home = () => {
                 </Card>
               );
             })}
-          </div>
-        </div>
-
-        {/* Study Progress */}
-        <div className="bg-white/10 backdrop-blur-lg rounded-3xl p-6 text-center border border-white/20 shadow-2xl">
-          <h3 className="text-lg font-bold text-white mb-4 flex items-center justify-center">
-            <Timer className="w-6 h-6 mr-2 text-blue-400" />
-            تقدم الدراسة
-          </h3>
-          <div className="bg-white/10 rounded-2xl p-4">
-            <div className="text-3xl font-bold text-blue-400 mb-1">
-              {points.study_hours.toFixed(1)} ساعة
-            </div>
-            <div className="text-white/70 text-sm">من أصل هدفك اليومي</div>
           </div>
         </div>
       </div>
