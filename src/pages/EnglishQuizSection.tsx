@@ -35,7 +35,7 @@ const EnglishQuizSection = () => {
   const [loading, setLoading] = useState(true);
   const [timeLeft, setTimeLeft] = useState(300); // 5 minutes
   const [quizResults, setQuizResults] = useState<QuizResult[]>([]);
-  const [userId, setUserId] = useState<string | null>(null);
+  const [userDbId, setUserDbId] = useState<string | null>(null);
 
   useEffect(() => {
     if (user?.id) {
@@ -56,23 +56,59 @@ const EnglishQuizSection = () => {
     if (!user?.id || !sectionNumber) return;
 
     try {
-      console.log('Initializing quiz for section:', sectionNumber);
+      console.log('Initializing quiz for section:', sectionNumber, 'User ID:', user.id);
       
-      // البحث عن المستخدم في قاعدة البيانات
-      const { data: userData, error: userError } = await supabase
+      // التأكد من وجود المستخدم في قاعدة البيانات
+      let { data: userData, error: userError } = await supabase
         .from('users')
         .select('id')
         .eq('telegram_id', user.id)
-        .single();
+        .maybeSingle();
 
-      if (userError || !userData) {
-        console.error('User not found:', userError);
+      if (userError) {
+        console.error('Error fetching user:', userError);
         setLoading(false);
         return;
       }
 
-      setUserId(userData.id);
-      console.log('User found:', userData.id);
+      // إنشاء المستخدم إذا لم يكن موجوداً
+      if (!userData) {
+        console.log('User not found, creating new user...');
+        const { data: newUser, error: createError } = await supabase
+          .from('users')
+          .insert({
+            telegram_id: user.id,
+            first_name: user.first_name || 'مستخدم',
+            last_name: user.last_name || '',
+            username: user.username || null,
+            avatar_url: user.photo_url || null,
+            total_points: 0,
+            task_points: 0,
+            quiz_points: 0,
+            counter_points: 0,
+            referral_points: 0,
+            study_hours: 0,
+            last_active: new Date().toISOString(),
+          })
+          .select('id')
+          .single();
+
+        if (createError) {
+          console.error('Error creating user:', createError);
+          setLoading(false);
+          return;
+        }
+        userData = newUser;
+      }
+
+      if (!userData?.id) {
+        console.error('No user data available');
+        setLoading(false);
+        return;
+      }
+
+      setUserDbId(userData.id);
+      console.log('User DB ID:', userData.id);
 
       // جلب الأسئلة المجابة بشكل صحيح لهذا القسم
       const { data: answeredQuestions, error: answeredError } = await supabase
@@ -112,7 +148,6 @@ const EnglishQuizSection = () => {
       console.log('Questions fetched:', questionsData?.length || 0);
 
       if (!questionsData || questionsData.length === 0) {
-        // إذا لم تعد هناك أسئلة، فهذا يعني أن القسم مكتمل
         console.log('No questions left, section completed');
         setQuizCompleted(true);
         setLoading(false);
@@ -135,20 +170,28 @@ const EnglishQuizSection = () => {
   };
 
   const handleNextQuestion = async () => {
-    if (selectedAnswer === null || !userId) return;
+    if (selectedAnswer === null || !userDbId) return;
 
     const currentQ = questions[currentQuestion];
     const isCorrect = selectedAnswer === currentQ.correct_answer;
     
     // حفظ نتيجة السؤال في قاعدة البيانات
     try {
-      await supabase
+      console.log('Saving answer for question:', currentQ.id, 'User:', userDbId, 'Correct:', isCorrect);
+      
+      const { error } = await supabase
         .from('user_answered_questions')
         .upsert({
-          user_id: userId,
+          user_id: userDbId,
           question_id: currentQ.id,
           is_correct: isCorrect
         });
+
+      if (error) {
+        console.error('Error saving answer:', error);
+      } else {
+        console.log('Answer saved successfully');
+      }
     } catch (error) {
       console.error('Error saving answer:', error);
     }
@@ -180,57 +223,72 @@ const EnglishQuizSection = () => {
   const handleQuizComplete = async () => {
     setQuizCompleted(true);
     
-    if (!user?.id || !userId || !sectionNumber) return;
+    if (!user?.id || !userDbId || !sectionNumber) return;
 
     const pointsEarned = score * 10;
 
     try {
-      // تحديث تقدم المستخدم في القسم
-      
+      console.log('Completing quiz. Score:', score, 'Points earned:', pointsEarned);
+
+      // حساب جميع الأسئلة المجابة بشكل صحيح في هذا القسم بعد إضافة الإجابات الجديدة
+      const { data: allCorrectAnswers, error: correctAnswersError } = await supabase
+        .from('user_answered_questions')
+        .select(`
+          question_id,
+          quiz_questions!inner(section_number, subject)
+        `)
+        .eq('user_id', userDbId)
+        .eq('is_correct', true)
+        .eq('quiz_questions.subject', 'english')
+        .eq('quiz_questions.section_number', parseInt(sectionNumber));
+
+      if (correctAnswersError) {
+        console.error('Error fetching correct answers:', correctAnswersError);
+      }
+
+      const correctAnswersCount = allCorrectAnswers?.length || 0;
+      console.log('Total correct answers in section:', correctAnswersCount);
+
       // الحصول على العدد الإجمالي للأسئلة في هذا القسم
-      const { data: allQuestionsData } = await supabase
+      const { data: allQuestionsData, error: allQuestionsError } = await supabase
         .from('quiz_questions')
         .select('id')
         .eq('subject', 'english')
         .eq('section_number', parseInt(sectionNumber))
         .eq('is_active', true);
 
-      const totalQuestions = allQuestionsData?.length || 15;
-      
-      // حساب جميع الأسئلة المجابة بشكل صحيح في هذا القسم
-      const { data: correctAnswers } = await supabase
-        .from('user_answered_questions')
-        .select(`
-          question_id,
-          quiz_questions!inner(section_number)
-        `)
-        .eq('user_id', userId)
-        .eq('is_correct', true)
-        .eq('quiz_questions.subject', 'english')
-        .eq('quiz_questions.section_number', parseInt(sectionNumber));
+      if (allQuestionsError) {
+        console.error('Error fetching all questions:', allQuestionsError);
+      }
 
-      const correctAnswersCount = correctAnswers?.length || 0;
-      console.log('Correct answers count:', correctAnswersCount, 'Total questions:', totalQuestions);
+      const totalQuestions = allQuestionsData?.length || 15;
+      console.log('Total questions in section:', totalQuestions);
       
       const isCompleted = correctAnswersCount >= totalQuestions;
       console.log('Section completed:', isCompleted);
 
       // تحديث أو إنشاء تقدم المستخدم
-      await supabase
+      const { error: progressError } = await supabase
         .from('user_quiz_progress')
         .upsert({
-          user_id: userId,
+          user_id: userDbId,
           subject: 'english',
           section_number: parseInt(sectionNumber),
           completed_questions: correctAnswersCount,
           is_completed: isCompleted
         });
 
+      if (progressError) {
+        console.error('Error updating progress:', progressError);
+      } else {
+        console.log('Progress updated successfully');
+      }
+
       // حفظ نتيجة الكويز
-      await supabase
+      const { error: resultError } = await supabase
         .from('quiz_results')
         .insert({
-          user_id: userId,
+          user_id: userDbId,
           subject: 'english',
           score: score,
           total_questions: questions.length,
@@ -239,24 +297,36 @@ const EnglishQuizSection = () => {
           answers: JSON.stringify(quizResults)
         });
 
+      if (resultError) {
+        console.error('Error saving quiz result:', resultError);
+      } else {
+        console.log('Quiz result saved successfully');
+      }
+
       // تحديث نقاط المستخدم
-      const { data: userData, error: userError } = await supabase
+      const { data: currentUserData, error: fetchUserError } = await supabase
         .from('users')
         .select('quiz_points, total_points')
         .eq('telegram_id', user.id)
         .single();
 
-      if (!userError && userData) {
-        const newQuizPoints = (userData.quiz_points || 0) + pointsEarned;
-        const newTotalPoints = (userData.total_points || 0) + pointsEarned;
+      if (!fetchUserError && currentUserData) {
+        const newQuizPoints = (currentUserData.quiz_points || 0) + pointsEarned;
+        const newTotalPoints = (currentUserData.total_points || 0) + pointsEarned;
 
-        await supabase
+        const { error: updateError } = await supabase
           .from('users')
           .update({
             quiz_points: newQuizPoints,
             total_points: newTotalPoints
           })
           .eq('telegram_id', user.id);
+
+        if (updateError) {
+          console.error('Error updating user points:', updateError);
+        } else {
+          console.log('User points updated successfully');
+        }
       }
 
     } catch (error) {
