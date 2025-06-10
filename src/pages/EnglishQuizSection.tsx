@@ -186,8 +186,46 @@ const EnglishQuizSection = () => {
 
     try {
       // تحديث تقدم المستخدم في القسم
-      const correctAnswers = quizResults.filter(r => r.isCorrect).length;
-      const isCompleted = correctAnswers === questions.length;
+      const correctAnswers = quizResults.filter(r => r.isCorrect).length + (selectedAnswer !== null && selectedAnswer === questions[currentQuestion]?.correct_answer ? 1 : 0);
+      
+      // الحصول على العدد الإجمالي للأسئلة في هذا القسم
+      const { data: allQuestionsData } = await supabase
+        .from('quiz_questions')
+        .select('id')
+        .eq('subject', 'english')
+        .eq('section_number', parseInt(sectionNumber))
+        .eq('is_active', true);
+
+      const totalQuestions = allQuestionsData?.length || 15;
+      
+      // حساب الأسئلة المجابة بشكل صحيح من قبل
+      const { data: previousCorrectAnswers } = await supabase
+        .from('user_answered_questions')
+        .select('question_id')
+        .eq('user_id', userId)
+        .eq('is_correct', true);
+
+      const previousCorrectIds = previousCorrectAnswers?.map(q => q.question_id) || [];
+      
+      // حساب الأسئلة المجابة بشكل صحيح من هذا القسم
+      const { data: sectionQuestions } = await supabase
+        .from('quiz_questions')
+        .select('id')
+        .eq('subject', 'english')
+        .eq('section_number', parseInt(sectionNumber))
+        .eq('is_active', true);
+
+      const sectionQuestionIds = sectionQuestions?.map(q => q.id) || [];
+      const correctFromThisSection = previousCorrectIds.filter(id => sectionQuestionIds.includes(id));
+      
+      // إضافة الأسئلة الصحيحة من الجلسة الحالية
+      const currentSessionCorrect = quizResults.filter(r => r.isCorrect).length;
+      if (selectedAnswer !== null && selectedAnswer === questions[currentQuestion]?.correct_answer) {
+        currentSessionCorrect + 1;
+      }
+      
+      const totalCorrectInSection = correctFromThisSection.length + currentSessionCorrect;
+      const isCompleted = totalCorrectInSection >= totalQuestions;
 
       await supabase
         .from('user_quiz_progress')
@@ -195,7 +233,7 @@ const EnglishQuizSection = () => {
           user_id: userId,
           subject: 'english',
           section_number: parseInt(sectionNumber),
-          completed_questions: correctAnswers,
+          completed_questions: totalCorrectInSection,
           is_completed: isCompleted
         });
 
