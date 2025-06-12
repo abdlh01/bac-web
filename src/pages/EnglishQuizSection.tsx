@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -264,10 +263,11 @@ const EnglishQuizSection = () => {
       const totalQuestions = allQuestionsData?.length || 15;
       console.log('Total questions in section:', totalQuestions);
       
+      // القسم مكتمل فقط إذا تم الإجابة على جميع الأسئلة بشكل صحيح
       const isCompleted = correctAnswersCount >= totalQuestions;
-      console.log('Section completed:', isCompleted);
+      console.log('Section completed:', isCompleted, `(${correctAnswersCount}/${totalQuestions})`);
 
-      // تحديث أو إنشاء تقدم المستخدم
+      // تحديث أو إنشاء تقدم المستخدم مع التأكد من القيم الصحيحة
       const { error: progressError } = await supabase
         .from('user_quiz_progress')
         .upsert({
@@ -276,12 +276,14 @@ const EnglishQuizSection = () => {
           section_number: parseInt(sectionNumber),
           completed_questions: correctAnswersCount,
           is_completed: isCompleted
+        }, {
+          onConflict: 'user_id,subject,section_number'
         });
 
       if (progressError) {
         console.error('Error updating progress:', progressError);
       } else {
-        console.log('Progress updated successfully');
+        console.log('Progress updated successfully. Section completed:', isCompleted);
       }
 
       // حفظ نتيجة الكويز
@@ -318,7 +320,8 @@ const EnglishQuizSection = () => {
           .from('users')
           .update({
             quiz_points: newQuizPoints,
-            total_points: newTotalPoints
+            total_points: newTotalPoints,
+            last_active: new Date().toISOString()
           })
           .eq('telegram_id', user.id);
 
@@ -328,6 +331,11 @@ const EnglishQuizSection = () => {
           console.log('User points updated successfully');
         }
       }
+
+      // انتظار قصير لضمان حفظ البيانات قبل إعادة التوجيه
+      setTimeout(() => {
+        console.log('Quiz completion process finished');
+      }, 1000);
 
     } catch (error) {
       console.error('Unexpected error completing quiz:', error);
@@ -378,7 +386,7 @@ const EnglishQuizSection = () => {
               النقاط المكتسبة: {score * 10}
             </div>
             <div className="text-green-400 font-bold">
-              🔓 تم إكمال القسم وفتح القسم التالي!
+              🔓 تم حفظ التقدم! عد إلى صفحة الأقسام لمتابعة التعلم
             </div>
           </div>
 

@@ -26,22 +26,58 @@ const EnglishQuizSections = () => {
     fetchSections();
   }, [user]);
 
+  // إضافة listener للتحديثات الفورية
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const channel = supabase
+      .channel('quiz-progress-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'user_quiz_progress'
+        },
+        (payload) => {
+          console.log('Quiz progress updated:', payload);
+          // إعادة جلب البيانات عند التحديث
+          fetchSections();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id]);
+
   const fetchSections = async () => {
     if (!user?.id) return;
 
     try {
+      console.log('Fetching sections for user:', user.id);
+      
       // البحث عن المستخدم في قاعدة البيانات
       const { data: userData, error: userError } = await supabase
         .from('users')
         .select('id')
         .eq('telegram_id', user.id)
-        .single();
+        .maybeSingle();
 
-      if (userError || !userData) {
-        console.error('User not found:', userError);
+      if (userError) {
+        console.error('User error:', userError);
         setLoading(false);
         return;
       }
+
+      if (!userData) {
+        console.log('User not found in database');
+        setLoading(false);
+        return;
+      }
+
+      console.log('User found with ID:', userData.id);
 
       // جلب جميع الأقسام للإنجليزية
       const { data: sectionsData, error: sectionsError } = await supabase
@@ -56,6 +92,8 @@ const EnglishQuizSections = () => {
         return;
       }
 
+      console.log('Sections found:', sectionsData?.length);
+
       // جلب تقدم المستخدم لكل قسم
       const { data: progressData, error: progressError } = await supabase
         .from('user_quiz_progress')
@@ -67,28 +105,67 @@ const EnglishQuizSections = () => {
         console.error('Error fetching progress:', progressError);
       }
 
-      // دمج البيانات
+      console.log('Progress data:', progressData);
+
+      // جلب الأسئلة المجابة بشكل صحيح لكل قسم
+      const { data: answeredQuestionsData, error: answeredError } = await supabase
+        .from('user_answered_questions')
+        .select(`
+          question_id,
+          is_correct,
+          quiz_questions!inner(section_number, subject)
+        `)
+        .eq('user_id', userData.id)
+        .eq('is_correct', true)
+        .eq('quiz_questions.subject', 'english');
+
+      if (answeredError) {
+        console.error('Error fetching answered questions:', answeredError);
+      }
+
+      // تجميع الأسئلة المجابة بشكل صحيح حسب القسم
+      const answeredBySection: { [key: number]: number } = {};
+      answeredQuestionsData?.forEach((answer: any) => {
+        const sectionNumber = answer.quiz_questions.section_number;
+        if (!answeredBySection[sectionNumber]) {
+          answeredBySection[sectionNumber] = 0;
+        }
+        answeredBySection[sectionNumber]++;
+      });
+
+      console.log('Answered questions by section:', answeredBySection);
+
+      // دمج البيانات مع حساب دقيق للتقدم
       const sectionsWithProgress = sectionsData.map(section => {
         const progress = progressData?.find(p => p.section_number === section.section_number);
+        const answeredCount = answeredBySection[section.section_number] || 0;
+        const isCompleted = answeredCount >= section.total_questions;
+        
+        console.log(`Section ${section.section_number}: ${answeredCount}/${section.total_questions} questions, completed: ${isCompleted}`);
+        
         return {
           ...section,
-          completed_questions: progress?.completed_questions || 0,
-          is_completed: progress?.is_completed || false,
+          completed_questions: answeredCount,
+          is_completed: isCompleted,
         };
       });
 
-      // تحديد الأقسام المفتوحة
+      // تحديد الأقسام المفتوحة بناءً على التقدم الفعلي
       const updatedSections = sectionsWithProgress.map((section, index) => {
         if (index === 0) {
+          // القسم الأول مفتوح دائماً
           return { ...section, is_unlocked: true };
         }
         
         const previousSection = sectionsWithProgress[index - 1];
         const isUnlocked = previousSection.is_completed;
         
+        console.log(`Section ${section.section_number} unlocked: ${isUnlocked} (previous section completed: ${previousSection.is_completed})`);
+        
         return { ...section, is_unlocked: isUnlocked };
       });
 
+      console.log('Final sections:', updatedSections);
       setSections(updatedSections);
     } catch (error) {
       console.error('Unexpected error fetching sections:', error);
@@ -98,8 +175,12 @@ const EnglishQuizSections = () => {
   };
 
   const handleSectionClick = (section: Section) => {
-    if (!section.is_unlocked) return;
+    if (!section.is_unlocked) {
+      console.log('Section is locked');
+      return;
+    }
     
+    console.log('Navigating to section:', section.section_number);
     navigate(`/quiz/english/section/${section.section_number}`);
   };
 
@@ -170,20 +251,20 @@ const EnglishQuizSections = () => {
                       القسم {section.section_number}
                     </h3>
                     <p className="text-white/80 text-sm">
-                      {section.completed_questions} / {section.total_questions} سؤال
+                      {section.completed_questions} / {section.total_questions} سؤال صحيح
                     </p>
                   </div>
                 </div>
 
                 <div className="text-right">
                   {section.is_completed && (
-                    <div className="text-green-400 text-sm font-medium">مكتمل</div>
+                    <div className="text-green-400 text-sm font-medium">مكتمل ✅</div>
                   )}
                   {!section.is_unlocked && (
-                    <div className="text-gray-400 text-sm">مقفل</div>
+                    <div className="text-gray-400 text-sm">مقفل 🔒</div>
                   )}
                   {section.is_unlocked && !section.is_completed && (
-                    <div className="text-blue-400 text-sm">متاح</div>
+                    <div className="text-blue-400 text-sm">متاح 🔓</div>
                   )}
                 </div>
               </div>
@@ -198,6 +279,17 @@ const EnglishQuizSections = () => {
               )}
             </div>
           ))}
+        </div>
+
+        {/* زر إعادة تحديث البيانات */}
+        <div className="mt-6">
+          <Button
+            onClick={fetchSections}
+            variant="outline"
+            className="w-full text-white border-white/20 hover:bg-white/10"
+          >
+            تحديث البيانات 🔄
+          </Button>
         </div>
       </div>
     </div>
