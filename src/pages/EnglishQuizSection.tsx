@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -50,6 +51,53 @@ const EnglishQuizSection = () => {
       handleQuizComplete();
     }
   }, [timeLeft, quizCompleted, questions.length]);
+
+  const fetchUnansweredQuestions = async (userId: string) => {
+    console.log('Fetching unanswered questions for section:', sectionNumber, 'User:', userId);
+    
+    // جلب الأسئلة المجابة بشكل صحيح لهذا القسم
+    const { data: answeredQuestions, error: answeredError } = await supabase
+      .from('user_answered_questions')
+      .select(`
+        question_id,
+        quiz_questions!inner(section_number, subject)
+      `)
+      .eq('user_id', userId)
+      .eq('is_correct', true)
+      .eq('quiz_questions.subject', 'english')
+      .eq('quiz_questions.section_number', parseInt(sectionNumber));
+
+    if (answeredError) {
+      console.error('Error fetching answered questions:', answeredError);
+      return [];
+    }
+
+    const answeredQuestionIds = answeredQuestions?.map(q => q.question_id) || [];
+    console.log('Answered question IDs:', answeredQuestionIds);
+
+    // جلب جميع الأسئلة من القسم المحدد
+    let questionsQuery = supabase
+      .from('quiz_questions')
+      .select('*')
+      .eq('subject', 'english')
+      .eq('section_number', parseInt(sectionNumber))
+      .eq('is_active', true);
+
+    // استبعاد الأسئلة المجابة بشكل صحيح إذا كان هناك أي منها
+    if (answeredQuestionIds.length > 0) {
+      questionsQuery = questionsQuery.not('id', 'in', `(${answeredQuestionIds.join(',')})`);
+    }
+
+    const { data: questionsData, error: questionsError } = await questionsQuery;
+
+    if (questionsError) {
+      console.error('Error fetching questions:', questionsError);
+      return [];
+    }
+
+    console.log('Unanswered questions fetched:', questionsData?.length || 0);
+    return questionsData || [];
+  };
 
   const initializeQuiz = async () => {
     if (!user?.id || !sectionNumber) return;
@@ -109,44 +157,10 @@ const EnglishQuizSection = () => {
       setUserDbId(userData.id);
       console.log('User DB ID:', userData.id);
 
-      // جلب الأسئلة المجابة بشكل صحيح لهذا القسم
-      const { data: answeredQuestions, error: answeredError } = await supabase
-        .from('user_answered_questions')
-        .select('question_id')
-        .eq('user_id', userData.id)
-        .eq('is_correct', true);
+      // جلب الأسئلة غير المجابة
+      const unansweredQuestions = await fetchUnansweredQuestions(userData.id);
 
-      if (answeredError) {
-        console.error('Error fetching answered questions:', answeredError);
-      }
-
-      const answeredQuestionIds = answeredQuestions?.map(q => q.question_id) || [];
-      console.log('Answered question IDs:', answeredQuestionIds);
-
-      // جلب جميع الأسئلة من القسم المحدد
-      let questionsQuery = supabase
-        .from('quiz_questions')
-        .select('*')
-        .eq('subject', 'english')
-        .eq('section_number', parseInt(sectionNumber))
-        .eq('is_active', true);
-
-      // استبعاد الأسئلة المجابة بشكل صحيح إذا كان هناك أي منها
-      if (answeredQuestionIds.length > 0) {
-        questionsQuery = questionsQuery.not('id', 'in', `(${answeredQuestionIds.join(',')})`);
-      }
-
-      const { data: questionsData, error: questionsError } = await questionsQuery;
-
-      if (questionsError) {
-        console.error('Error fetching questions:', questionsError);
-        setLoading(false);
-        return;
-      }
-
-      console.log('Questions fetched:', questionsData?.length || 0);
-
-      if (!questionsData || questionsData.length === 0) {
+      if (!unansweredQuestions || unansweredQuestions.length === 0) {
         console.log('No questions left, section completed');
         setQuizCompleted(true);
         setLoading(false);
@@ -154,7 +168,7 @@ const EnglishQuizSection = () => {
       }
 
       // خلط الأسئلة
-      const shuffled = [...questionsData].sort(() => Math.random() - 0.5);
+      const shuffled = [...unansweredQuestions].sort(() => Math.random() - 0.5);
       setQuestions(shuffled);
       console.log('Questions set:', shuffled.length);
       setLoading(false);
@@ -209,14 +223,35 @@ const EnglishQuizSection = () => {
 
     if (isCorrect) {
       setScore(score + 1);
-    }
-
-    if (currentQuestion < questions.length - 1) {
-      setCurrentQuestion(currentQuestion + 1);
-      setSelectedAnswer(null);
+      
+      // إزالة السؤال المجاب عليه بشكل صحيح من قائمة الأسئلة الحالية
+      const updatedQuestions = questions.filter((_, index) => index !== currentQuestion);
+      setQuestions(updatedQuestions);
+      
+      console.log('Question answered correctly, remaining questions:', updatedQuestions.length);
+      
+      // إذا لم تعد هناك أسئلة متبقية، انتهى الكويز
+      if (updatedQuestions.length === 0) {
+        handleQuizComplete();
+        return;
+      }
+      
+      // إذا كان السؤال الحالي هو الأخير، اذهب للسؤال الجديد الأول
+      if (currentQuestion >= updatedQuestions.length) {
+        setCurrentQuestion(0);
+      }
+      // وإلا ابق في نفس المؤشر (سيظهر السؤال التالي)
     } else {
-      handleQuizComplete();
+      // إذا كانت الإجابة خاطئة، انتقل للسؤال التالي
+      if (currentQuestion < questions.length - 1) {
+        setCurrentQuestion(currentQuestion + 1);
+      } else {
+        // إذا وصلنا لآخر سؤال، أعد الكويز من البداية للأسئلة المتبقية
+        setCurrentQuestion(0);
+      }
     }
+    
+    setSelectedAnswer(null);
   };
 
   const handleQuizComplete = async () => {
